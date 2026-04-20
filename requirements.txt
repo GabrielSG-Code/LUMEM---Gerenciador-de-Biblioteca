@@ -1,0 +1,7 @@
+django
+psycopg2-binary
+python-dotenv
+reportlab
+openpyxl
+// Se caso quisermos no futuro upload de imagens
+Pillow
