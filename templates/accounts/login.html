@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Entrar</h2>
+
+{% if messages %}
+    {% for message in messages %}
+        <p style="color: red;">{{ message }}</p>
+    {% endfor %}
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <label>Usuário</label>
+    <input type="text" name="username" required>
+    <label>Senha</label>
+    <input type="password" name="password" required>
+    <button type="submit">Entrar</button>
+</form>
+<p>Não tem conta? <a href="{% url 'register' %}">Cadastrar</a></p>
+{% endblock %}
