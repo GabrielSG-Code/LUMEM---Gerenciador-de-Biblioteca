@@ -25,9 +25,7 @@ def login_view(request):
             return redirect('dashboard')  # trocar pela url principal depois
         else:
             messages.error(request, 'Usuário ou senha inválidos.')
-    else:
-        form = AuthenticationForm()
-    return render(request, 'accounts/login.html', {'form': form})
+    return render(request, 'accounts/login.html')
 
 def logout_view(request):
     logout(request)
