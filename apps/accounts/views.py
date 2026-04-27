@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .forms import RegisterForm
+from django.contrib.auth.forms import AuthenticationForm
 
 def register(request):
     if request.method == 'POST':
@@ -24,7 +25,9 @@ def login_view(request):
             return redirect('dashboard')  # trocar pela url principal depois
         else:
             messages.error(request, 'Usuário ou senha inválidos.')
-    return render(request, 'accounts/login.html')
+    else:
+        form = AuthenticationForm()
+    return render(request, 'accounts/login.html', {'form': form})
 
 def logout_view(request):
     logout(request)
@@ -33,3 +36,6 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     return render(request, 'accounts/dashboard.html')
+
+def home(request):
+    return render(request, 'home.html')

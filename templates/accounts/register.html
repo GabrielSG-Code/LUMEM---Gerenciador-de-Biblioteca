@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<a href="{% url 'home' %}">Página Inicial</a>
+<br><br>
 <h2>Criar conta</h2>
 <form method="post">
     {% csrf_token %}
@@ -8,4 +10,5 @@
     <button type="submit">Cadastrar</button>
 </form>
 <p>Já tem conta? <a href="{% url 'login' %}">Entrar</a></p>
+
 {% endblock %}
