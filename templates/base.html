@@ -3,10 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUMEN</title>
+    <title>Lumen - Biblioteca</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary-color: #2c3e50; 
+            --secondary-color: #34495e;
+            --bg: #f8f9fa;
+            --ink: #1a1612;
+            --muted: #7a6f64;
+            --accent: #c0392b;
+        }
+        
+        body { 
+            background-color: var(--bg); 
+            font-family: 'DM Sans', sans-serif; 
+        }
+        
+        /* ── Updated Navbar ── */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(26, 22, 18, 0.08);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand {
+            font-family: 'Playfair Display', serif !important;
+            font-size: 1.4rem !important;
+            font-weight: 700 !important;
+            color: var(--ink) !important;
+            letter-spacing: -0.01em;
+            text-decoration: none !important;
+        }
+        
+        .navbar-nav .nav-link {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--ink) !important;
+            padding: 8px 16px !important;
+            margin: 0 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: var(--accent) !important;
+            background-color: rgba(192, 57, 43, 0.05);
+        }
+        
+        .navbar-nav .nav-link.active {
+            color: var(--accent) !important;
+            background-color: rgba(192, 57, 43, 0.08);
+        }
+        
+        .navbar-toggler {
+            border: none !important;
+            padding: 4px 8px;
+        }
+        
+        .navbar-toggler:focus {
+            box-shadow: none !important;
+        }
+        
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%231a1612' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+        
+        /* ── Register Button ── */
+        .btn-register {
+            background: var(--ink) !important;
+            color: #fff !important;
+            border: none !important;
+            padding: 8px 20px !important;
+            border-radius: 6px !important;
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 0.9rem !important;
+            font-weight: 500 !important;
+            letter-spacing: 0.03em !important;
+            margin-left: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .btn-register:hover {
+            background: var(--accent) !important;
+            color: #fff !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(192, 57, 43, 0.3);
+        }
+        
+        /* ── Logout Link ── */
+        .logout-link {
+            color: var(--muted) !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .logout-link:hover {
+            color: var(--accent) !important;
+        }
+        
+        .btn-primary { background-color: var(--primary-color); border: none; }
+        .btn-primary:hover { background-color: var(--secondary-color); }
+    </style>
 </head>
 <body>
-    {% block content %}
-    {% endblock %}
+    <nav class="navbar navbar-expand-lg mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">📖 Lumen</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if request.resolver_match.url_name != 'home' %}
+                        <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'browse_collection' %}">Explorar Acervo</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#">Meus Empréstimos</a></li>
+                        <li class="nav-item"><a class="nav-link logout-link" href="{% url 'logout' %}">Sair</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Entrar</a></li>
+                        <li class="nav-item"><a class="btn-register" href="{% url 'register' %}">Cadastrar</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
