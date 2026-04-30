@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #f8f9fa;
+    --ink: #1a1612;
+    --muted: #7a6f64;
+    --accent: #c0392b;
+    --card-shadow: 0 8px 32px rgba(0,0,0,0.13);
+    --success: #27ae60;
+  }
+
+  .lumen-browse {
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 48px 32px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── Header ── */
+  .browse-header {
+    max-width: 1100px;
+    margin: 0 auto 32px;
+    text-align: center;
+  }
+
+  .browse-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    color: var(--ink);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .browse-header p {
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 300;
+    margin-bottom: 28px;
+  }
+
+  /* ── Search and filters ── */
+  .browse-controls {
+    max-width: 1100px;
+    margin: 0 auto 32px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .category-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 8px 16px;
+    border: 1.5px solid rgba(0,0,0,0.15);
+    border-radius: 20px;
+    background: #fff;
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--ink);
+    color: #fff;
+  }
+
+  /* ── Book grid ── */
+  .books-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 28px;
+  }
+
+  /* ── Book card (reusing from home) ── */
+  .book-cover {
+    width: 100%;
+    height: 300px;
+    border-radius: 3px 10px 10px 3px;
+    box-shadow: var(--card-shadow);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+    position: relative;
+    transition: transform 0.25s, box-shadow 0.25s;
+    cursor: pointer;
+  }
+
+  .book-cover:hover {
+    transform: translateY(-6px) rotate(-1deg);
+    box-shadow: 0 18px 48px rgba(0,0,0,0.18);
+  }
+
+  /* Dobra da lombada */
+  .book-cover::before {
+    content: '';
+    position: absolute;
+    left: 14px; top: 0; bottom: 0;
+    width: 1px;
+    background: rgba(0,0,0,0.07);
+  }
+
+  /* Status badge */
+  .status-badge {
+    position: absolute;
+    top: -10px; right: -10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .status-badge.available {
+    background: var(--success);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(39,174,96,0.35);
+  }
+
+  .status-badge.unavailable {
+    background: var(--muted);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(122,111,100,0.35);
+  }
+
+  .book-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-color, #1a1612);
+  }
+
+  .book-author {
+    font-size: 0.72rem;
+    color: var(--text-color, #1a1612);
+    opacity: 0.6;
+    margin-top: 4px;
+  }
+
+  .book-illustration {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0;
+  }
+
+  .book-illustration img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    opacity: 0.75;
+  }
+
+  .book-category {
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-color, #1a1612);
+    opacity: 0.6;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    padding-top: 10px;
+    position: relative;
+  }
+
+  .book-category::before {
+    content: '◆';
+    position: absolute;
+    top: -8px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--cover-bg);
+    padding: 0 5px;
+    font-size: 0.55rem;
+  }
+
+  /* Paletas por categoria */
+  .book-cover.investigacao { --cover-bg: #f3f4f6; background: var(--cover-bg); }
+  .book-cover.romance      { --cover-bg: #fdf2f8; background: var(--cover-bg); }
+  .book-cover.ficcao       { --cover-bg: #ecfeff; background: var(--cover-bg); }
+  .book-cover.terror       { --cover-bg: #111827; background: var(--cover-bg); --text-color: #f3f4f6; }
+  .book-cover.historico    { --cover-bg: #fefce8; background: var(--cover-bg); }
+  .book-cover.drama        { --cover-bg: #f0f9ff; background: var(--cover-bg); }
+  .book-cover.outros       { --cover-bg: #f5f0eb; background: var(--cover-bg); }
+
+  .terror .book-illustration img { filter: brightness(0) invert(1); }
+
+  /* ── Back button ── */
+  .back-btn {
+    max-width: 1100px;
+    margin: 0 auto 24px;
+  }
+
+  .back-btn a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .back-btn a:hover {
+    color: var(--ink);
+  }
+
+  /* ── No results ── */
+  .no-results {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .no-results img {
+    opacity: 0.3;
+    margin-bottom: 16px;
+  }
+</style>
+
+<div class="lumen-browse">
+
+  <!-- Back to home -->
+  <div class="back-btn">
+    <a href="{% url 'home' %}">← Voltar ao Início</a>
+  </div>
+
+  <!-- Header -->
+  <div class="browse-header">
+    <h1>Explorar Acervo</h1>
+    <p>Descubra nossa coleção completa de livros disponíveis</p>
+  </div>
+
+  <!-- Search and filters -->
+  <div class="browse-controls">
+    <div class="search-box">
+      <input type="text" placeholder="Buscar por título ou autor..." id="searchInput">
+    </div>
+    <div class="category-filter">
+      <a href="#" class="filter-btn active" data-category="all">Todos</a>
+      <a href="#" class="filter-btn" data-category="investigacao">Investigação</a>
+      <a href="#" class="filter-btn" data-category="romance">Romance</a>
+      <a href="#" class="filter-btn" data-category="ficcao">Ficção</a>
+      <a href="#" class="filter-btn" data-category="terror">Terror</a>
+      <a href="#" class="filter-btn" data-category="historico">Histórico</a>
+      <a href="#" class="filter-btn" data-category="drama">Drama</a>
+    </div>
+  </div>
+
+  <!-- Books grid -->
+  <div class="books-grid" id="booksGrid">
+    {% for book in books %}
+      <div class="book-cover {{ book.category|lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}">
+        
+        {% if book.available %}
+          <div class="status-badge available">Disponível</div>
+        {% else %}
+          <div class="status-badge unavailable">Emprestado</div>
+        {% endif %}
+
+        <div>
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.author }}</div>
+        </div>
+
+        <div class="book-illustration">
+          {% if book.category == 'investigacao' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/816/816701.png" alt="Investigação">
+          {% elif book.category == 'romance' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/833/833472.png" alt="Romance">
+          {% elif book.category == 'ficcao' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Ficção">
+          {% elif book.category == 'terror' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/8490/8490316.png" alt="Terror">
+          {% elif book.category == 'historico' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/17386/17386792.png" alt="Histórico">
+          {% elif book.category == 'drama' %}
+            <img src="https://cdn-icons-png.flaticon.com/512/9104/9104968.png" alt="Drama">
+          {% else %}
+            <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="Livro">
+          {% endif %}
+        </div>
+
+        <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
+      </div>
+    {% empty %}
+      <div class="no-results">
+        <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" width="64">
+        <p>Nenhum livro encontrado no acervo.</p>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<script>
+// Simple search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const booksGrid = document.getElementById('booksGrid');
+    const books = document.querySelectorAll('.book-cover');
+
+    let currentCategory = 'all';
+
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        filterBooks();
+    });
+
+    // Category filter functionality
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active filter
+            filterBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            currentCategory = this.dataset.category;
+            filterBooks();
+        });
+    });
+
+    function filterBooks() {
+        const searchTerm = searchInput.value.toLowerCase();
+        let visibleCount = 0;
+
+        books.forEach(book => {
+            const title = book.dataset.title;
+            const author = book.dataset.author;
+            const category = book.dataset.category;
+            
+            const matchesSearch = title.includes(searchTerm) || author.includes(searchTerm);
+            const matchesCategory = currentCategory === 'all' || category === currentCategory;
+            
+            if (matchesSearch && matchesCategory) {
+                book.style.display = 'flex';
+                visibleCount++;
+            } else {
+                book.style.display = 'none';
+            }
+        });
+
+        // Show/hide no results message
+        const noResults = document.querySelector('.no-results');
+        if (noResults) {
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    }
+});
+</script>
+
+{% endblock %}

@@ -9,20 +9,25 @@ def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('login')
+            user = form.save()
+            # Automatically log in the user after registration
+            login(request, user)
+            messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
+            return redirect('home')
+        else:
+            # Show form validation errors
+            messages.error(request, 'Por favor, corrija os erros abaixo.')
     else:
         form = RegisterForm()
     return render(request, 'accounts/register.html', {'form': form})
 
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
             login(request, user)
-            return redirect('dashboard')  # trocar pela url principal depois
+            return redirect('home')
         else:
             messages.error(request, 'Usuário ou senha inválidos.')
     else:
@@ -36,6 +41,3 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     return render(request, 'accounts/dashboard.html')
-
-def home(request):
-    return render(request, 'home.html')
