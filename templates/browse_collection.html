@@ -162,6 +162,31 @@
     box-shadow: 0 2px 8px rgba(122,111,100,0.35);
   }
 
+  /* Exemplar count badge */
+  .exemplar-badge {
+    position: absolute;
+    top: -10px; left: -10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: #3498db;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(52,152,219,0.35);
+    white-space: nowrap;
+  }
+
+  .exemplar-badge.low-stock {
+    background: #f39c12;
+    box-shadow: 0 2px 8px rgba(243,156,18,0.35);
+  }
+
+  .exemplar-badge.out-of-stock {
+    background: #e74c3c;
+    box-shadow: 0 2px 8px rgba(231,76,60,0.35);
+  }
+
   .book-title {
     font-family: 'Playfair Display', serif;
     font-size: 1rem;
@@ -256,6 +281,205 @@
     opacity: 0.3;
     margin-bottom: 16px;
   }
+
+  /* ── Add Book Button ── */
+  .add-book-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+
+  .add-book-btn:hover {
+    background: #a93226;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(192,57,43,0.3);
+  }
+
+  /* ── Modal ── */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    background: #fff;
+    margin: 5% auto;
+    padding: 32px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    position: relative;
+    animation: modalSlideIn 0.3s ease;
+  }
+
+  @keyframes modalSlideIn {
+    from {
+      transform: translateY(-30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .close-modal {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 24px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    background: none;
+    border: none;
+    padding: 4px;
+  }
+
+  .close-modal:hover {
+    color: var(--ink);
+  }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .modal p {
+    color: var(--muted);
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+  }
+
+  /* ── Form Styling ── */
+  .book-form {
+    display: grid;
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-weight: 500;
+    color: var(--ink);
+    font-size: 0.9rem;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 12px 16px;
+    border: 1.5px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+    background: #fff;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--muted);
+    border: 1.5px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background: #f8f9fa;
+    color: var(--ink);
+  }
+
+  .btn-primary {
+    padding: 10px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #a93226;
+  }
+
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+      margin: 10% auto;
+      padding: 24px;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+  }
 </style>
 
 <div class="lumen-browse">
@@ -285,6 +509,12 @@
       <a href="#" class="filter-btn" data-category="historico">Histórico</a>
       <a href="#" class="filter-btn" data-category="drama">Drama</a>
     </div>
+    <button class="add-book-btn" onclick="openAddBookModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Adicionar Livro
+    </button>
   </div>
 
   <!-- Books grid -->
@@ -297,6 +527,19 @@
         {% else %}
           <div class="status-badge unavailable">Emprestado</div>
         {% endif %}
+
+        <!-- Placeholder for exemplar count - TODO: Replace with actual DB field -->
+        {% with exemplar_count=forloop.counter0|add:"1"|add:"2" %}
+          {% if exemplar_count == 1 %}
+            <div class="exemplar-badge low-stock">{{ exemplar_count }} exemplar</div>
+          {% elif exemplar_count <= 3 %}
+            <div class="exemplar-badge low-stock">{{ exemplar_count }} exemplares</div>
+          {% elif exemplar_count == 0 %}
+            <div class="exemplar-badge out-of-stock">Sem estoque</div>
+          {% else %}
+            <div class="exemplar-badge">{{ exemplar_count }} exemplares</div>
+          {% endif %}
+        {% endwith %}
 
         <div>
           <div class="book-title">{{ book.title }}</div>
@@ -329,6 +572,71 @@
         <p>Nenhum livro encontrado no acervo.</p>
       </div>
     {% endfor %}
+  </div>
+
+  <!-- Add Book Modal -->
+  <div id="addBookModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeAddBookModal()">&times;</button>
+      
+      <h2>Adicionar Novo Livro</h2>
+      <p>Preencha as informações para adicionar um novo livro ao acervo</p>
+      
+      <form class="book-form" onsubmit="handleAddBook(event)">
+        <div class="form-group">
+          <label for="bookTitle">Título *</label>
+          <input type="text" id="bookTitle" name="title" required placeholder="Ex: O Nome do Vento">
+        </div>
+        
+        <div class="form-group">
+          <label for="bookAuthor">Autor *</label>
+          <input type="text" id="bookAuthor" name="author" required placeholder="Ex: Patrick Rothfuss">
+        </div>
+        
+        <div class="form-group">
+          <label for="bookDescription">Descrição</label>
+          <textarea id="bookDescription" name="description" placeholder="Breve descrição do livro..."></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookYear">Ano de Lançamento</label>
+            <input type="number" id="bookYear" name="release_year" min="1000" max="2024" placeholder="2007">
+          </div>
+          
+          <div class="form-group">
+            <label for="bookCategory">Categoria *</label>
+            <select id="bookCategory" name="category" required>
+              <option value="">Selecione uma categoria</option>
+              <option value="investigacao">Investigação</option>
+              <option value="romance">Romance</option>
+              <option value="ficcao">Ficção</option>
+              <option value="terror">Terror</option>
+              <option value="historico">Histórico</option>
+              <option value="drama">Drama</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookPublisher">Editora</label>
+            <input type="text" id="bookPublisher" name="publisher" placeholder="Ex: Arqueiro">
+          </div>
+          
+          <div class="form-group">
+            <label for="bookExemplary">Número de Exemplares *</label>
+            <input type="number" id="bookExemplary" name="exemplary" min="1" required placeholder="1">
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeAddBookModal()">Cancelar</button>
+          <button type="submit" class="btn-primary">Adicionar Livro</button>
+        </div>
+      </form>
+    </div>
   </div>
 
 </div>
@@ -389,6 +697,136 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Modal functionality
+function openAddBookModal() {
+    document.getElementById('addBookModal').style.display = 'block';
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeAddBookModal() {
+    document.getElementById('addBookModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    
+    // Reset form
+    document.querySelector('.book-form').reset();
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('addBookModal');
+    if (event.target === modal) {
+        closeAddBookModal();
+    }
+}
+
+// Handle form submission (placeholder functionality)
+function handleAddBook(event) {
+    event.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(event.target);
+    const bookData = {
+        title: formData.get('title'),
+        author: formData.get('author'),
+        description: formData.get('description'),
+        release_year: formData.get('release_year'),
+        category: formData.get('category'),
+        publisher: formData.get('publisher'),
+        exemplary: formData.get('exemplary')
+    };
+    
+    // Placeholder functionality - simulate successful submission
+    console.log('Placeholder: Book data that would be sent to backend:', bookData);
+    
+    // Create a temporary book card to show the result
+    const booksGrid = document.getElementById('booksGrid');
+    const newBookCard = createBookCard(bookData);
+    
+    // Insert at the beginning of the grid
+    booksGrid.insertAdjacentHTML('afterbegin', newBookCard);
+    
+    // Show success message
+    alert(`Livro "${bookData.title}" adicionado com sucesso!\n\n(Esta é uma demonstração - na versão final, os dados serão salvos no banco de dados)`);
+    
+    // Close modal and reset form
+    closeAddBookModal();
+    
+    // Update search/filter functionality for the new book
+    setTimeout(() => {
+        location.reload(); // Simple reload to update filter functionality
+    }, 100);
+}
+
+// Helper function to create book card HTML
+function createBookCard(bookData) {
+    const categoryClass = bookData.category || 'outros';
+    const categoryDisplay = getCategoryDisplayName(bookData.category);
+    const iconUrl = getCategoryIcon(bookData.category);
+    const exemplarCount = parseInt(bookData.exemplary) || 1;
+    
+    // Determine exemplar badge class and text
+    let exemplarBadgeClass = 'exemplar-badge';
+    let exemplarText = '';
+    
+    if (exemplarCount === 0) {
+        exemplarBadgeClass += ' out-of-stock';
+        exemplarText = 'Sem estoque';
+    } else if (exemplarCount === 1) {
+        exemplarBadgeClass += ' low-stock';
+        exemplarText = '1 exemplar';
+    } else if (exemplarCount <= 3) {
+        exemplarBadgeClass += ' low-stock';
+        exemplarText = `${exemplarCount} exemplares`;
+    } else {
+        exemplarText = `${exemplarCount} exemplares`;
+    }
+    
+    return `
+        <div class="book-cover ${categoryClass}" data-category="${bookData.category}" data-title="${bookData.title.toLowerCase()}" data-author="${bookData.author.toLowerCase()}">
+            <div class="status-badge available">Disponível</div>
+            <div class="${exemplarBadgeClass}">${exemplarText}</div>
+            
+            <div>
+                <div class="book-title">${bookData.title}</div>
+                <div class="book-author">${bookData.author}</div>
+            </div>
+            
+            <div class="book-illustration">
+                <img src="${iconUrl}" alt="${categoryDisplay}">
+            </div>
+            
+            <div class="book-category">${categoryDisplay}</div>
+        </div>
+    `;
+}
+
+// Helper functions for category display and icons
+function getCategoryDisplayName(category) {
+    const categoryNames = {
+        'investigacao': 'Investigação',
+        'romance': 'Romance',
+        'ficcao': 'Ficção',
+        'terror': 'Terror',
+        'historico': 'Histórico',
+        'drama': 'Drama',
+        'outros': 'Outros'
+    };
+    return categoryNames[category] || 'Outros';
+}
+
+function getCategoryIcon(category) {
+    const categoryIcons = {
+        'investigacao': 'https://cdn-icons-png.flaticon.com/512/816/816701.png',
+        'romance': 'https://cdn-icons-png.flaticon.com/512/833/833472.png',
+        'ficcao': 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png',
+        'terror': 'https://cdn-icons-png.flaticon.com/512/8490/8490316.png',
+        'historico': 'https://cdn-icons-png.flaticon.com/512/17386/17386792.png',
+        'drama': 'https://cdn-icons-png.flaticon.com/512/9104/9104968.png',
+        'outros': 'https://cdn-icons-png.flaticon.com/512/3145/3145765.png'
+    };
+    return categoryIcons[category] || categoryIcons['outros'];
+}
 </script>
 
 {% endblock %}
