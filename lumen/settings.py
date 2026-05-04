@@ -80,7 +80,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'lumen.wsgi.application'
 
-
 # Database
 
 DATABASES = {
