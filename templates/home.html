@@ -1,15 +1,23 @@
 {% extends 'base.html' %}
+
+{% block title %}Dashboard - LUMEN{% endblock %}
+
 {% block content %}
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
 
   :root {
-    --bg: #f8f9fa;
-    --ink: #1a1612;
-    --muted: #7a6f64;
-    --accent: #c0392b;
-    --card-shadow: 0 8px 32px rgba(0,0,0,0.13);
+    --bg: #f0f3fb;
+    --ink: #1e2a45;
+    --muted: #6b7a99;
+    --accent: #6396ff;
+    --blue-nav: #6396ff;
+    --blue-light: #85adff;
+    --blue-hover: #4d7de8;
+    --white: #ffffff;
+    --green: #3dbe78;
+    --card-shadow: 0 8px 32px rgba(99,150,255,0.13);
   }
 
   .lumen-dashboard {
@@ -247,6 +255,7 @@
     <p>Bem-vindo ao LUMEN — seu acervo pessoal de empréstimos.</p>
     <div class="hero-actions">
       <a href="{% url 'browse_collection' %}" class="btn-primary-lumen">Explorar Acervo</a>
+      <a href="{% url 'manage_users' %}" class="btn-outline-lumen">Gerenciar Usuários</a>
     </div>
   </div>
 
