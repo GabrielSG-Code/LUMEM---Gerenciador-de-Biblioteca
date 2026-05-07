@@ -607,7 +607,8 @@
       <h2>Adicionar Novo Livro</h2>
       <p>Preencha as informações para adicionar um novo livro ao acervo</p>
       
-      <form class="book-form" onsubmit="handleAddBook(event)">
+      <form class="book-form" method="post" action="{% url 'add_book' %}">
+        {% csrf_token %}
         <div class="form-group">
           <label for="bookTitle">Título *</label>
           <input type="text" id="bookTitle" name="title" required placeholder="Ex: O Nome do Vento">
@@ -826,28 +827,6 @@ function closeAddBookModal() {
     document.querySelector('.book-form').reset();
 }
 
-// Handle form submission (placeholder functionality)
-function handleAddBook(event) {
-    event.preventDefault();
-    
-    // Get form data
-    const formData = new FormData(event.target);
-    const bookData = {
-        title: formData.get('title'),
-        author: formData.get('author'),
-        description: formData.get('description'),
-        release_year: formData.get('release_year'),
-        category: formData.get('category'),
-        publisher: formData.get('publisher'),
-        exemplary: formData.get('exemplary')
-    };
-    
-    // Show success message
-    alert(`Livro "${bookData.title}" adicionado com sucesso!\n\n(Esta é uma demonstração - na versão final, os dados serão salvos no banco de dados)`);
-    
-    // Close modal and reset form
-    closeAddBookModal();
-}
 
 // Close modal when clicking outside of it
 window.addEventListener('click', function(event) {

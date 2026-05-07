@@ -36,7 +36,7 @@ class Livros(models.Model):
     ano = models.IntegerField(blank=True, null=True)
     paginas = models.IntegerField(blank=True, null=True)
     descricao = models.TextField(blank=True, null=True)
-    genero = models.CharField(blank=True, null=True)
+    genero = models.CharField(max_length=255, blank=True, null=True)
     status_livro = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
