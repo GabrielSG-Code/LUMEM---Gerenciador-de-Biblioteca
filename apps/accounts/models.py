@@ -49,7 +49,7 @@ class Usuarios(models.Model):
     senha = models.CharField(max_length=255)
     privilegio = models.CharField(max_length=20, blank=True, null=True)
     status = models.CharField(max_length=20, blank=True, null=True)
-    email = models.CharField(max_length=255)
+    email = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         managed = False

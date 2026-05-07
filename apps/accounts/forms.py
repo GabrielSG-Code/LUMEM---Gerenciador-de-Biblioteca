@@ -1,10 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.hashers import make_password
-from django.db import transaction
-
-from .models import Usuarios
 
 User = get_user_model()
 
@@ -18,39 +14,15 @@ class RegisterForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('Este e-mail já está cadastrado.')
-
-        if Usuarios.objects.filter(email=email).exists():
-            raise forms.ValidationError('Este e-mail já está cadastrado na base legada.')
-
         return email
 
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-
-        if Usuarios.objects.filter(username=username).exists():
-            raise forms.ValidationError('Este nome de usuário já está cadastrado na base legada.')
-
-        return username
-
-    @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-
         if commit:
             user.save()
-
-            Usuarios.objects.create(
-                username=self.cleaned_data['username'],
-                senha=make_password(self.cleaned_data['password1']),
-                privilegio='leitor',
-                status='ativo',
-                email=self.cleaned_data['email']
-            )
-
         return user
 
 
