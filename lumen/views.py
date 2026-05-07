@@ -77,3 +77,14 @@ def browse_collection(request):
     
     return render(request, 'browse_collection.html', {'books': books})
 
+def manage_users(request):
+    # Mock user statistics for now - replace with actual model queries later
+    context = {
+        'total_users': 24,
+        'admin_count': 1,
+        'librarian_count': 3,
+        'reader_count': 20,
+    }
+    
+    return render(request, 'manage_users.html', context)
+

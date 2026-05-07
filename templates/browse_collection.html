@@ -162,31 +162,6 @@
     box-shadow: 0 2px 8px rgba(122,111,100,0.35);
   }
 
-  /* Exemplar count badge */
-  .exemplar-badge {
-    position: absolute;
-    top: -10px; left: -10px;
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 4px 8px;
-    border-radius: 20px;
-    background: #3498db;
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(52,152,219,0.35);
-    white-space: nowrap;
-  }
-
-  .exemplar-badge.low-stock {
-    background: #f39c12;
-    box-shadow: 0 2px 8px rgba(243,156,18,0.35);
-  }
-
-  .exemplar-badge.out-of-stock {
-    background: #e74c3c;
-    box-shadow: 0 2px 8px rgba(231,76,60,0.35);
-  }
-
   .book-title {
     font-family: 'Playfair Display', serif;
     font-size: 1rem;
@@ -310,7 +285,7 @@
   .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 1040;
     left: 0;
     top: 0;
     width: 100%;
@@ -375,6 +350,108 @@
     font-size: 0.95rem;
   }
 
+  /* ── Book Detail Styles ── */
+  .book-details {
+    margin: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .detail-item strong {
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .detail-item span {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .detail-description {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .detail-description strong {
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .detail-description p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  #detailAuthor {
+    color: var(--muted);
+    font-size: 1rem;
+    margin: 0 0 24px 0;
+    font-style: italic;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--muted);
+    border: 1.5px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background: #f8f9fa;
+    color: var(--ink);
+  }
+
+  .btn-primary {
+    padding: 10px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #a93226;
+  }
+
   /* ── Form Styling ── */
   .book-form {
     display: grid;
@@ -423,51 +500,12 @@
     gap: 16px;
   }
 
-  .form-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(0,0,0,0.1);
-  }
-
-  .btn-secondary {
-    padding: 10px 20px;
-    background: transparent;
-    color: var(--muted);
-    border: 1.5px solid rgba(0,0,0,0.15);
-    border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-secondary:hover {
-    background: #f8f9fa;
-    color: var(--ink);
-  }
-
-  .btn-primary {
-    padding: 10px 20px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-primary:hover {
-    background: #a93226;
-  }
-
   @media (max-width: 768px) {
     .form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .detail-row {
       grid-template-columns: 1fr;
     }
     
@@ -520,26 +558,13 @@
   <!-- Books grid -->
   <div class="books-grid" id="booksGrid">
     {% for book in books %}
-      <div class="book-cover {{ book.category|lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}">
+      <div class="book-cover {{ book.category|lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ forloop.counter0|add:"2010" }}, 'Editora Exemplo', {{ forloop.counter0|add:"3"|add:"2" }}, 'Esta é uma descrição detalhada para o livro {{ book.title|escapejs }}. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')">
         
         {% if book.available %}
           <div class="status-badge available">Disponível</div>
         {% else %}
           <div class="status-badge unavailable">Emprestado</div>
         {% endif %}
-
-        <!-- Placeholder for exemplar count - TODO: Replace with actual DB field -->
-        {% with exemplar_count=forloop.counter0|add:"1"|add:"2" %}
-          {% if exemplar_count == 1 %}
-            <div class="exemplar-badge low-stock">{{ exemplar_count }} exemplar</div>
-          {% elif exemplar_count <= 3 %}
-            <div class="exemplar-badge low-stock">{{ exemplar_count }} exemplares</div>
-          {% elif exemplar_count == 0 %}
-            <div class="exemplar-badge out-of-stock">Sem estoque</div>
-          {% else %}
-            <div class="exemplar-badge">{{ exemplar_count }} exemplares</div>
-          {% endif %}
-        {% endwith %}
 
         <div>
           <div class="book-title">{{ book.title }}</div>
@@ -639,6 +664,50 @@
     </div>
   </div>
 
+  <!-- Book Detail Modal -->
+  <div id="bookDetailModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeBookDetailModal()">&times;</button>
+      
+      <h2 id="detailTitle">Título do Livro</h2>
+      <p id="detailAuthor">por Autor</p>
+      
+      <div class="book-details">
+        <div class="detail-row">
+          <div class="detail-item">
+            <strong>Ano de Lançamento:</strong>
+            <span id="detailYear">-</span>
+          </div>
+          <div class="detail-item">
+            <strong>Editora:</strong>
+            <span id="detailPublisher">-</span>
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-item">
+            <strong>Categoria:</strong>
+            <span id="detailCategory">-</span>
+          </div>
+          <div class="detail-item">
+            <strong>Exemplares:</strong>
+            <span id="detailExemplary">-</span>
+          </div>
+        </div>
+        
+        <div class="detail-description">
+          <strong>Descrição:</strong>
+          <p id="detailDescription">Descrição não disponível.</p>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeBookDetailModal()">Fechar</button>
+        <button type="button" class="btn-primary" onclick="borrowBook()">Emprestar Livro</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -698,10 +767,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Modal functionality
+// Book Detail Modal Functions
+function openBookDetailModal(title, author, category, year, publisher, exemplary, description) {
+    document.getElementById('detailTitle').textContent = title;
+    document.getElementById('detailAuthor').textContent = `por ${author}`;
+    document.getElementById('detailYear').textContent = year;
+    document.getElementById('detailPublisher').textContent = publisher;
+    document.getElementById('detailCategory').textContent = getCategoryDisplayName(category);
+    
+    // Handle exemplary count display
+    if (exemplary === 1) {
+        document.getElementById('detailExemplary').textContent = '1 exemplar';
+    } else {
+        document.getElementById('detailExemplary').textContent = `${exemplary} exemplares`;
+    }
+    
+    document.getElementById('detailDescription').textContent = description;
+    
+    document.getElementById('bookDetailModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeBookDetailModal() {
+    document.getElementById('bookDetailModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function borrowBook() {
+    const title = document.getElementById('detailTitle').textContent;
+    alert(`Funcionalidade de empréstimo será implementada em breve!\n\nLivro: "${title}"`);
+}
+
+// Helper function for category display names
+function getCategoryDisplayName(category) {
+    const categoryNames = {
+        'investigacao': 'Investigação',
+        'romance': 'Romance',
+        'ficcao': 'Ficção',
+        'terror': 'Terror',
+        'historico': 'Histórico',
+        'drama': 'Drama',
+        'outros': 'Outros'
+    };
+    return categoryNames[category] || 'Outros';
+}
+
+// Add Book Modal Functions
 function openAddBookModal() {
     document.getElementById('addBookModal').style.display = 'block';
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
 }
 
 function closeAddBookModal() {
@@ -710,14 +824,6 @@ function closeAddBookModal() {
     
     // Reset form
     document.querySelector('.book-form').reset();
-}
-
-// Close modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('addBookModal');
-    if (event.target === modal) {
-        closeAddBookModal();
-    }
 }
 
 // Handle form submission (placeholder functionality)
@@ -736,97 +842,26 @@ function handleAddBook(event) {
         exemplary: formData.get('exemplary')
     };
     
-    // Placeholder functionality - simulate successful submission
-    console.log('Placeholder: Book data that would be sent to backend:', bookData);
-    
-    // Create a temporary book card to show the result
-    const booksGrid = document.getElementById('booksGrid');
-    const newBookCard = createBookCard(bookData);
-    
-    // Insert at the beginning of the grid
-    booksGrid.insertAdjacentHTML('afterbegin', newBookCard);
-    
     // Show success message
     alert(`Livro "${bookData.title}" adicionado com sucesso!\n\n(Esta é uma demonstração - na versão final, os dados serão salvos no banco de dados)`);
     
     // Close modal and reset form
     closeAddBookModal();
-    
-    // Update search/filter functionality for the new book
-    setTimeout(() => {
-        location.reload(); // Simple reload to update filter functionality
-    }, 100);
 }
 
-// Helper function to create book card HTML
-function createBookCard(bookData) {
-    const categoryClass = bookData.category || 'outros';
-    const categoryDisplay = getCategoryDisplayName(bookData.category);
-    const iconUrl = getCategoryIcon(bookData.category);
-    const exemplarCount = parseInt(bookData.exemplary) || 1;
+// Close modal when clicking outside of it
+window.addEventListener('click', function(event) {
+    const addModal = document.getElementById('addBookModal');
+    const detailModal = document.getElementById('bookDetailModal');
     
-    // Determine exemplar badge class and text
-    let exemplarBadgeClass = 'exemplar-badge';
-    let exemplarText = '';
-    
-    if (exemplarCount === 0) {
-        exemplarBadgeClass += ' out-of-stock';
-        exemplarText = 'Sem estoque';
-    } else if (exemplarCount === 1) {
-        exemplarBadgeClass += ' low-stock';
-        exemplarText = '1 exemplar';
-    } else if (exemplarCount <= 3) {
-        exemplarBadgeClass += ' low-stock';
-        exemplarText = `${exemplarCount} exemplares`;
-    } else {
-        exemplarText = `${exemplarCount} exemplares`;
+    if (event.target === addModal) {
+        closeAddBookModal();
     }
     
-    return `
-        <div class="book-cover ${categoryClass}" data-category="${bookData.category}" data-title="${bookData.title.toLowerCase()}" data-author="${bookData.author.toLowerCase()}">
-            <div class="status-badge available">Disponível</div>
-            <div class="${exemplarBadgeClass}">${exemplarText}</div>
-            
-            <div>
-                <div class="book-title">${bookData.title}</div>
-                <div class="book-author">${bookData.author}</div>
-            </div>
-            
-            <div class="book-illustration">
-                <img src="${iconUrl}" alt="${categoryDisplay}">
-            </div>
-            
-            <div class="book-category">${categoryDisplay}</div>
-        </div>
-    `;
-}
-
-// Helper functions for category display and icons
-function getCategoryDisplayName(category) {
-    const categoryNames = {
-        'investigacao': 'Investigação',
-        'romance': 'Romance',
-        'ficcao': 'Ficção',
-        'terror': 'Terror',
-        'historico': 'Histórico',
-        'drama': 'Drama',
-        'outros': 'Outros'
-    };
-    return categoryNames[category] || 'Outros';
-}
-
-function getCategoryIcon(category) {
-    const categoryIcons = {
-        'investigacao': 'https://cdn-icons-png.flaticon.com/512/816/816701.png',
-        'romance': 'https://cdn-icons-png.flaticon.com/512/833/833472.png',
-        'ficcao': 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png',
-        'terror': 'https://cdn-icons-png.flaticon.com/512/8490/8490316.png',
-        'historico': 'https://cdn-icons-png.flaticon.com/512/17386/17386792.png',
-        'drama': 'https://cdn-icons-png.flaticon.com/512/9104/9104968.png',
-        'outros': 'https://cdn-icons-png.flaticon.com/512/3145/3145765.png'
-    };
-    return categoryIcons[category] || categoryIcons['outros'];
-}
+    if (event.target === detailModal) {
+        closeBookDetailModal();
+    }
+});
 </script>
 
 {% endblock %}

@@ -2,8 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .forms import RegisterForm
-from django.contrib.auth.forms import AuthenticationForm
+from .forms import RegisterForm, EmailOrUsernameLoginForm
 
 def register(request):
     if request.method == 'POST':
@@ -11,7 +10,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             # Automatically log in the user after registration
-            login(request, user)
+            login(request, user, backend='accounts.backends.EmailOrUsernameBackend')
             messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
             return redirect('home')
         else:
@@ -23,15 +22,15 @@ def register(request):
 
 def login_view(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        form = EmailOrUsernameLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
             return redirect('home')
         else:
-            messages.error(request, 'Usuário ou senha inválidos.')
+            messages.error(request, 'Email/usuário ou senha inválidos.')
     else:
-        form = AuthenticationForm()
+        form = EmailOrUsernameLoginForm()
     return render(request, 'accounts/login.html', {'form': form})
 
 def logout_view(request):
