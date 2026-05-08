@@ -74,29 +74,30 @@
     border-color: var(--accent);
   }
 
-  .category-filter {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+  .category-dropdown-box {
+    min-width: 200px;
   }
 
-  .filter-btn {
-    padding: 8px 16px;
-    border: 1.5px solid rgba(0,0,0,0.15);
-    border-radius: 20px;
+  .category-dropdown-box select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
     background: #fff;
     color: var(--ink);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
+    transition: border-color 0.2s;
     cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
   }
 
-  .filter-btn:hover, .filter-btn.active {
-    background: var(--ink);
-    color: #fff;
+  .category-dropdown-box select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .category-dropdown-box select:hover {
+    border-color: rgba(0,0,0,0.2);
   }
 
   /* ── Book grid ── */
@@ -104,7 +105,8 @@
     max-width: 1100px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
     gap: 28px;
   }
 
@@ -221,6 +223,29 @@
   .book-cover.historico    { --cover-bg: #fefce8; background: var(--cover-bg); }
   .book-cover.drama        { --cover-bg: #f0f9ff; background: var(--cover-bg); }
   .book-cover.outros       { --cover-bg: #f5f0eb; background: var(--cover-bg); }
+  .book-cover.literatura-estrangeira { --cover-bg: #e0f2fe; --accent-color: #0369a1; }
+  .book-cover.fantasia { --cover-bg: #f5f3ff; --accent-color: #6d28d9; }
+  .book-cover.autoajuda { --cover-bg: #ecfdf5; --accent-color: #047857; }
+  .book-cover.infantojuvenil { --cover-bg: #fff1f2; --accent-color: #be123c; }
+  .book-cover.biografia { --cover-bg: #fafaf9; --accent-color: #44403c; }
+  .book-cover.administracao { --cover-bg: #f1f5f9; --accent-color: #334155; }
+  .book-cover.artes { --cover-bg: #fff7ed; --accent-color: #c2410c; }
+  .book-cover.economia { --cover-bg: #f0fdf4; --accent-color: #15803d; }
+  .book-cover.hq { --cover-bg: #fef2f2; --accent-color: #dc2626; }
+  .book-cover.informatica-tecnologia { --cover-bg: #0f172a; --accent-color: #38bdf8; --text-color: #f8fafc; }
+  .book-cover.lgbt { --cover-bg: #fdf2f8; --accent-color: #db2777; }
+
+  /* Apply background colors to new category styles */
+  .literatura-estrangeira { background: var(--cover-bg, #e0f2fe); }
+  .fantasia { background: var(--cover-bg, #f5f3ff); }
+  .autoajuda { background: var(--cover-bg, #ecfdf5); }
+  .biografia { background: var(--cover-bg, #fafaf9); }
+  .administracao { background: var(--cover-bg, #f1f5f9); }
+  .informatica-tecnologia { background: var(--cover-bg, #0f172a); color: var(--text-color, #f8fafc); }
+  .economia { background: var(--cover-bg, #f0fdf4); }
+
+  /* Filtro especial para ícones em capas escuras (como Informática) */
+  .informatica-tecnologia .book-illustration img { filter: brightness(0) invert(1); }
 
   .terror .book-illustration img { filter: brightness(0) invert(1); }
 
@@ -535,35 +560,43 @@
 
   <!-- Search and filters -->
   <div class="browse-controls">
-    <div class="search-box">
-      <input type="text" placeholder="Buscar por título ou autor..." id="searchInput">
+    <form method="GET" style="display: contents;">
+      <div class="search-box">
+        <input type="text" name="search" placeholder="Buscar por título ou autor..." value="{{ search_query }}" id="searchInput">
+      </div>
+      <div class="category-dropdown-box">
+        <select name="category" id="categorySelect" onchange="this.form.submit()">
+          <option value="all" {% if category_filter == 'all' %}selected{% endif %}>Todas as categorias</option>
+          {% for category in categories %}
+            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+    <div style="display: flex; gap: 12px;">
+      <button class="add-book-btn" onclick="openAddBookModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Adicionar Livro
+      </button>
     </div>
-    <div class="category-filter">
-      <a href="#" class="filter-btn active" data-category="all">Todos</a>
-      <a href="#" class="filter-btn" data-category="investigacao">Investigação</a>
-      <a href="#" class="filter-btn" data-category="romance">Romance</a>
-      <a href="#" class="filter-btn" data-category="ficcao">Ficção</a>
-      <a href="#" class="filter-btn" data-category="terror">Terror</a>
-      <a href="#" class="filter-btn" data-category="historico">Histórico</a>
-      <a href="#" class="filter-btn" data-category="drama">Drama</a>
-    </div>
-    <button class="add-book-btn" onclick="openAddBookModal()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      Adicionar Livro
-    </button>
+  </div>
+
+  <!-- Collection Statistics -->
+  <div style="max-width: 1100px; margin: 0 auto 24px; text-align: center; color: var(--muted); font-size: 0.9rem;">
+    Mostrando {{ books.start_index }} - {{ books.end_index }} de {{ total_books }} livros únicos ({{ available_exemplars }}/{{ total_exemplars }} exemplares disponíveis)
   </div>
 
   <!-- Books grid -->
   <div class="books-grid" id="booksGrid">
     {% for book in books %}
-      <div class="book-cover {{ book.category|lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ forloop.counter0|add:"2010" }}, 'Editora Exemplo', {{ forloop.counter0|add:"3"|add:"2" }}, 'Esta é uma descrição detalhada para o livro {{ book.title|escapejs }}. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')">
+      <div class="book-cover {{ book.category_lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ book.year|default:"2010" }}, '{{ book.publisher|default:"Editora Exemplo" }}', {{ book.total_count }}, '{{ book.description|default:"Esta é uma descrição detalhada para o livro"|escapejs }}')">
         
         {% if book.available %}
-          <div class="status-badge available">Disponível</div>
+          <div class="status-badge available">{{ book.availability_text }}</div>
         {% else %}
-          <div class="status-badge unavailable">Emprestado</div>
+          <div class="status-badge unavailable">{{ book.availability_text }}</div>
         {% endif %}
 
         <div>
@@ -572,21 +605,7 @@
         </div>
 
         <div class="book-illustration">
-          {% if book.category == 'investigacao' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/816/816701.png" alt="Investigação">
-          {% elif book.category == 'romance' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/833/833472.png" alt="Romance">
-          {% elif book.category == 'ficcao' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Ficção">
-          {% elif book.category == 'terror' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/8490/8490316.png" alt="Terror">
-          {% elif book.category == 'historico' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/17386/17386792.png" alt="Histórico">
-          {% elif book.category == 'drama' %}
-            <img src="https://cdn-icons-png.flaticon.com/512/9104/9104968.png" alt="Drama">
-          {% else %}
-            <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="Livro">
-          {% endif %}
+          <img src="{{ book.icon_url }}" alt="{{ book.category }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
         </div>
 
         <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
@@ -597,7 +616,122 @@
         <p>Nenhum livro encontrado no acervo.</p>
       </div>
     {% endfor %}
+    
+    <!-- Sample/Demo Books (always visible) -->
+    {% if not books or books|length < 3 %}
+    <div class="book-cover literatura-estrangeira" data-category="Literatura Estrangeira" data-title="o estrangeiro" data-author="albert camus" onclick="openBookDetailModal('O Estrangeiro', 'Albert Camus', 'Literatura Estrangeira', 1942, 'Editora Gallimard', 1, 'Um clássico da literatura existencialista que explora temas de alienação e absurdismo através da história de Meursault.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">O Estrangeiro</div>
+        <div class="book-author">Albert Camus</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/5332/5332986.png" alt="Literatura Estrangeira">
+      </div>
+      <div class="book-category">Literatura Estrangeira</div>
+    </div>
+
+    <div class="book-cover fantasia" data-category="Fantasia" data-title="o nome do vento" data-author="patrick rothfuss" onclick="openBookDetailModal('O Nome do Vento', 'Patrick Rothfuss', 'Fantasia', 2007, 'DAW Books', 1, 'Primeiro livro da trilogia A Crônica do Matador do Rei, que narra a história de Kvothe, um lendário herói.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">O Nome do Vento</div>
+        <div class="book-author">Patrick Rothfuss</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/867/867884.png" alt="Fantasia">
+      </div>
+      <div class="book-category">Fantasia</div>
+    </div>
+
+    <div class="book-cover autoajuda" data-category="Autoajuda" data-title="hábitos atômicos" data-author="james clear" onclick="openBookDetailModal('Hábitos Atômicos', 'James Clear', 'Autoajuda', 2018, 'Avery', 1, 'Um guia prático sobre como formar bons hábitos e quebrar os maus, baseado em evidências científicas.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">Hábitos Atômicos</div>
+        <div class="book-author">James Clear</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/15659/15659775.png" alt="Autoajuda">
+      </div>
+      <div class="book-category">Autoajuda</div>
+    </div>
+
+    <div class="book-cover biografia" data-category="Biografia" data-title="steve jobs" data-author="walter isaacson" onclick="openBookDetailModal('Steve Jobs', 'Walter Isaacson', 'Biografia', 2011, 'Simon & Schuster', 1, 'Biografia autorizada do co-fundador da Apple, baseada em mais de quarenta entrevistas com Jobs.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">Steve Jobs</div>
+        <div class="book-author">Walter Isaacson</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/7757/7757638.png" alt="Biografia">
+      </div>
+      <div class="book-category">Biografia</div>
+    </div>
+
+    <div class="book-cover administracao" data-category="Administração" data-title="gestão moderna" data-author="peter drucker" onclick="openBookDetailModal('Gestão Moderna', 'Peter Drucker', 'Administração', 1954, 'Harper & Brothers', 1, 'Obra seminal sobre gestão empresarial e princípios de administração eficaz.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">Gestão Moderna</div>
+        <div class="book-author">Peter Drucker</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/1465/1465400.png" alt="Administração">
+      </div>
+      <div class="book-category">Administração</div>
+    </div>
+
+    <div class="book-cover informatica-tecnologia" data-category="Informática e Tecnologia" data-title="código limpo" data-author="robert c. martin" onclick="openBookDetailModal('Código Limpo', 'Robert C. Martin', 'Informática e Tecnologia', 2008, 'Prentice Hall', 1, 'Manual de boas práticas para escrever código limpo, legível e manutenível.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">Código Limpo</div>
+        <div class="book-author">Robert C. Martin</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/9626/9626716.png" alt="Informática">
+      </div>
+      <div class="book-category">Informática</div>
+    </div>
+
+    <div class="book-cover economia" data-category="Economia" data-title="pai rico, pai pobre" data-author="robert kiyosaki" onclick="openBookDetailModal('Pai Rico, Pai Pobre', 'Robert Kiyosaki', 'Economia', 1997, 'Warner Books', 1, 'Livro sobre educação financeira que contrasta diferentes mentalidades sobre dinheiro e investimento.')">
+      <div class="status-badge available">1/1</div>
+      <div>
+        <div class="book-title">Pai Rico, Pai Pobre</div>
+        <div class="book-author">Robert Kiyosaki</div>
+      </div>
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/7890/7890493.png" alt="Economia">
+      </div>
+      <div class="book-category">Negócios</div>
+    </div>
+    {% endif %}
   </div>
+
+  <!-- Pagination -->
+  {% if books.has_other_pages %}
+  <div style="max-width: 1100px; margin: 32px auto; display: flex; justify-content: center;">
+    <div style="display: flex; gap: 8px; align-items: center;">
+      {% if books.has_previous %}
+        <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ books.previous_page_number }}" 
+           style="padding: 8px 12px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">‹ Anterior</a>
+      {% endif %}
+      
+      {% for num in books.paginator.page_range %}
+        {% if books.number == num %}
+          <span style="padding: 8px 12px; background: var(--ink); color: white; border-radius: 6px; font-size: 0.9rem; font-weight: 500;">{{ num }}</span>
+        {% elif num > books.number|add:'-3' and num < books.number|add:'3' %}
+          <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ num }}" 
+             style="padding: 8px 12px; background: #f8f9fa; color: var(--ink); text-decoration: none; border-radius: 6px; font-size: 0.9rem; transition: background 0.2s;" 
+             onmouseover="this.style.background='#e9ecef'" 
+             onmouseout="this.style.background='#f8f9fa'">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      
+      {% if books.has_next %}
+        <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ books.next_page_number }}" 
+           style="padding: 8px 12px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">Próxima ›</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Add Book Modal -->
   <div id="addBookModal" class="modal">
@@ -634,13 +768,9 @@
             <label for="bookCategory">Categoria *</label>
             <select id="bookCategory" name="category" required>
               <option value="">Selecione uma categoria</option>
-              <option value="investigacao">Investigação</option>
-              <option value="romance">Romance</option>
-              <option value="ficcao">Ficção</option>
-              <option value="terror">Terror</option>
-              <option value="historico">Histórico</option>
-              <option value="drama">Drama</option>
-              <option value="outros">Outros</option>
+              {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -712,60 +842,32 @@
 </div>
 
 <script>
-// Simple search and filter functionality
+// Search functionality with server-side filtering
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const booksGrid = document.getElementById('booksGrid');
-    const books = document.querySelectorAll('.book-cover');
+    let searchTimeout;
 
-    let currentCategory = 'all';
-
-    // Search functionality
+    // Search functionality - submit form on input with debounce
     searchInput.addEventListener('input', function() {
-        filterBooks();
-    });
-
-    // Category filter functionality
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Update active filter
-            filterBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            currentCategory = this.dataset.category;
-            filterBooks();
-        });
-    });
-
-    function filterBooks() {
-        const searchTerm = searchInput.value.toLowerCase();
-        let visibleCount = 0;
-
-        books.forEach(book => {
-            const title = book.dataset.title;
-            const author = book.dataset.author;
-            const category = book.dataset.category;
-            
-            const matchesSearch = title.includes(searchTerm) || author.includes(searchTerm);
-            const matchesCategory = currentCategory === 'all' || category === currentCategory;
-            
-            if (matchesSearch && matchesCategory) {
-                book.style.display = 'flex';
-                visibleCount++;
-            } else {
-                book.style.display = 'none';
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const form = this.closest('form');
+            if (form) {
+                form.submit();
             }
-        });
+        }, 500); // 500ms delay to avoid too many requests
+    });
 
-        // Show/hide no results message
-        const noResults = document.querySelector('.no-results');
-        if (noResults) {
-            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    // Submit form on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            const form = this.closest('form');
+            if (form) {
+                form.submit();
+            }
         }
-    }
+    });
 });
 
 // Book Detail Modal Functions
@@ -801,16 +903,9 @@ function borrowBook() {
 
 // Helper function for category display names
 function getCategoryDisplayName(category) {
-    const categoryNames = {
-        'investigacao': 'Investigação',
-        'romance': 'Romance',
-        'ficcao': 'Ficção',
-        'terror': 'Terror',
-        'historico': 'Histórico',
-        'drama': 'Drama',
-        'outros': 'Outros'
-    };
-    return categoryNames[category] || 'Outros';
+    // Simply return the category as-is since we now use proper category names from the database
+    // The category names are already in the correct format from the database
+    return category || 'Outros';
 }
 
 // Add Book Modal Functions

@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, get_user_model
 
-from .models import Livros
+from .models import Livros, Emprestimo
 
 User = get_user_model()
 
@@ -90,3 +90,45 @@ class AddBookForm(forms.Form):
             livros_criados.append(livro)
 
         return livros_criados
+
+
+class LoanForm(forms.ModelForm):
+    user = forms.ModelChoiceField(
+        queryset=User.objects.all(),
+        empty_label="Selecione um usuário",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    book = forms.ModelChoiceField(
+        queryset=Livros.objects.filter(status_livro='Disponível'),
+        empty_label="Selecione um livro",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    data_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    data_entrega = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    reserva = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
+    class Meta:
+        model = Emprestimo
+        fields = ['data_inicio', 'data_entrega', 'reserva']
+
+    def save(self, commit=True):
+        emprestimo = super().save(commit=False)
+        emprestimo.id_usuario = str(self.cleaned_data['user'].id)
+        emprestimo.id_livro = str(self.cleaned_data['book'].id_livro)
+        emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"
+        
+        if commit:
+            emprestimo.save()
+            # Update book status
+            book = self.cleaned_data['book']
+            book.status_livro = 'Emprestado'
+            book.save()
+        
+        return emprestimo

@@ -10,20 +10,22 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.READER)
     email = models.EmailField(unique=True)
 
+
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
 
 class Emprestimo(models.Model):
-    id_usuario = models.CharField(blank=True, null=True)
-    id_livro = models.CharField(blank=True, null=True)
-    id_emprestimo = models.CharField(blank=True, null=True)
+    id = models.AutoField(primary_key=True)
+    id_usuario = models.CharField(max_length=50, blank=True, null=True)
+    id_livro = models.CharField(max_length=50, blank=True, null=True)
+    id_emprestimo = models.CharField(max_length=50, blank=True, null=True)
     data_inicio = models.DateField(blank=True, null=True)
     data_entrega = models.DateField(blank=True, null=True)
     data_fim = models.DateField(blank=True, null=True)
     reserva = models.BooleanField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'emprestimo'
 
 class Livros(models.Model):
@@ -40,7 +42,7 @@ class Livros(models.Model):
     status_livro = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'livros'
 
 class Usuarios(models.Model):
@@ -52,5 +54,5 @@ class Usuarios(models.Model):
     email = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'usuarios'

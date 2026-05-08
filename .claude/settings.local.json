@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/mnt/c/Users/ossil/OneDrive/Documentos/Estudos/Facul/unifacs/7° semestre/Modelos/LUMEM---Gerenciador-de-Biblioteca\")",
+      "Bash(python3 manage.py shell -c \"\nfrom django.contrib.auth import get_user_model\nUser = get_user_model()\ntry:\n    admin_user = User.objects.get(username=''admin_lumen'')\n    admin_user.set_password(''h8!!@T&+4y'')\n    admin_user.email = ''admin.lumen@gmail.com''\n    admin_user.role = ''admin''\n    admin_user.is_superuser = True\n    admin_user.is_staff = True\n    admin_user.save()\n    print(''Superuser updated successfully'')\nexcept User.DoesNotExist:\n    admin_user = User.objects.create_superuser(\n        username=''admin_lumen'',\n        email=''admin.lumen@gmail.com'',\n        password=''h8!!@T&+4y''\n    )\n    admin_user.role = ''admin''\n    admin_user.save()\n    print(''Superuser created successfully'')\n\")"
+    ],
+    "deny": []
+  }
+}

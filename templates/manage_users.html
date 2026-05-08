@@ -527,19 +527,19 @@
   <div class="stats">
     <div class="stat-card">
       <span class="stat-label"><span class="dot dot-blue"></span>Total de usuários</span>
-      <span class="stat-value" id="total-users">24</span>
+      <span class="stat-value" id="total-users">{{ stats.total }}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label"><span class="dot dot-gray"></span>Administradores</span>
-      <span class="stat-value" id="admin-count">1</span>
+      <span class="stat-value" id="admin-count">{{ stats.admin }}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label"><span class="dot dot-cyan"></span>Bibliotecários</span>
-      <span class="stat-value" id="librarian-count">3</span>
+      <span class="stat-value" id="librarian-count">{{ stats.librarian }}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label"><span class="dot dot-lavender"></span>Leitores</span>
-      <span class="stat-value" id="reader-count">20</span>
+      <span class="stat-value" id="reader-count">{{ stats.reader }}</span>
     </div>
   </div>
 
@@ -632,32 +632,23 @@
 </div>
 
 <script>
-// Sample data from HTML example - will be replaced with Django data later
+// Get Django user data
 const allUsers = [
-  { initials:'BC', avatarClass:'av-blue',   name:'Beatriz Cavalcante', email:'beatriz.cavalcante@lumen.com',  role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 10:32'   },
-  { initials:'RM', avatarClass:'av-gray',   name:'Rafael Mendonça',   email:'rafael.mendonca@lumen.com',     role:'Administrador', badgeClass:'badge-admin',  active:true,  lastAccess:'Ontem, 15:08'  },
-  { initials:'JF', avatarClass:'av-purple', name:'Juliana Ferreira',  email:'juliana.ferreira@lumen.com',    role:'Leitor',        badgeClass:'badge-leitor', active:false, lastAccess:'20/03/2026'    },
-  { initials:'DF', avatarClass:'av-blue',   name:'Diego Furtado',     email:'diego.furtado@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 08:31'   },
-  { initials:'CA', avatarClass:'av-cyan',   name:'Camila Andrade',    email:'camila.andrade@lumen.com',      role:'Bibliotecário', badgeClass:'badge-biblio', active:true,  lastAccess:'30/04/2026'    },
-  { initials:'AR', avatarClass:'av-purple', name:'Ana Rodrigues',     email:'ana.rodrigues@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 14:20'   },
-  { initials:'MS', avatarClass:'av-gray',   name:'Miguel Santos',     email:'miguel.santos@lumen.com',       role:'Bibliotecário', badgeClass:'badge-biblio', active:false, lastAccess:'15/04/2026'    },
-  { initials:'LC', avatarClass:'av-cyan',   name:'Luiza Costa',       email:'luiza.costa@lumen.com',         role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Ontem, 11:45'  },
-  { initials:'PC', avatarClass:'av-blue',   name:'Paulo Costa',       email:'paulo.costa@lumen.com',         role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 09:15'   },
-  { initials:'MO', avatarClass:'av-purple', name:'Marina Oliveira',   email:'marina.oliveira@lumen.com',     role:'Leitor',        badgeClass:'badge-leitor', active:false, lastAccess:'18/04/2026'    },
-  { initials:'FS', avatarClass:'av-cyan',   name:'Fernando Silva',    email:'fernando.silva@lumen.com',      role:'Bibliotecário', badgeClass:'badge-biblio', active:true,  lastAccess:'Ontem, 16:30'  },
-  { initials:'LM', avatarClass:'av-gray',   name:'Laura Martins',     email:'laura.martins@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 12:45'   },
-  { initials:'RS', avatarClass:'av-blue',   name:'Ricardo Santos',    email:'ricardo.santos@lumen.com',      role:'Leitor',        badgeClass:'badge-leitor', active:false, lastAccess:'22/03/2026'    },
-  { initials:'VN', avatarClass:'av-purple', name:'Vitória Nunes',     email:'vitoria.nunes@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Ontem, 14:10'  },
-  { initials:'GF', avatarClass:'av-cyan',   name:'Gabriel Ferraz',    email:'gabriel.ferraz@lumen.com',      role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 08:55'   },
-  { initials:'TA', avatarClass:'av-gray',   name:'Thiago Alves',      email:'thiago.alves@lumen.com',        role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 11:20'   },
-  { initials:'IS', avatarClass:'av-blue',   name:'Isabela Souza',     email:'isabela.souza@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:false, lastAccess:'25/03/2026'    },
-  { initials:'FA', avatarClass:'av-purple', name:'Fábio Andrade',     email:'fabio.andrade@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Ontem, 17:45'  },
-  { initials:'CN', avatarClass:'av-cyan',   name:'Carolina Neves',    email:'carolina.neves@lumen.com',      role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 13:30'   },
-  { initials:'HL', avatarClass:'av-gray',   name:'Henrique Lima',     email:'henrique.lima@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 15:15'   },
-  { initials:'PM', avatarClass:'av-blue',   name:'Priscila Moura',    email:'priscila.moura@lumen.com',      role:'Leitor',        badgeClass:'badge-leitor', active:false, lastAccess:'28/03/2026'    },
-  { initials:'AC', avatarClass:'av-purple', name:'André Castro',      email:'andre.castro@lumen.com',        role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Ontem, 10:25'  },
-  { initials:'SR', avatarClass:'av-cyan',   name:'Sofia Ribeiro',     email:'sofia.ribeiro@lumen.com',       role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 16:40'   },
-  { initials:'EM', avatarClass:'av-gray',   name:'Eduardo Mendes',    email:'eduardo.mendes@lumen.com',      role:'Leitor',        badgeClass:'badge-leitor', active:true,  lastAccess:'Hoje, 07:50'   },
+{% for user in users %}
+  {
+    id: {{ user.id }},
+    initials: '{{ user.initials }}',
+    avatarClass: 'av-blue',
+    name: '{{ user.name|escapejs }}',
+    email: '{{ user.email|escapejs }}',
+    role: '{{ user.role|escapejs }}',
+    badgeClass: {% if user.role == 'Administrador' %}'badge-admin'{% elif user.role == 'Bibliotecário' %}'badge-biblio'{% else %}'badge-leitor'{% endif %},
+    active: {{ user.active|yesno:'true,false' }},
+    lastAccess: '{{ user.last_login }}'
+  }{% if not forloop.last %},{% endif %}
+{% empty %}
+  // No users found
+{% endfor %}
 ];
 
 let currentFilter = 'Todos';
@@ -798,22 +789,45 @@ function handleEditUser(event) {
   const role = formData.get('role');
   const status = formData.get('status') === 'on';
   
-  // Update user data
   const u = allUsers[editingIndex];
-  u.role = role;
-  u.active = status;
   
-  // Update badge class
-  const map = { 'Leitor':'badge-leitor', 'Administrador':'badge-admin', 'Bibliotecário':'badge-biblio' };
-  u.badgeClass = map[u.role] || 'badge-leitor';
-  
-  // Re-render table, update statistics, and close modal
-  updateStatistics();
-  renderTable();
-  closeEditUserModal();
-  
-  // Show success message
-  alert(`Usuário "${u.name}" atualizado com sucesso!\n\n(Esta é uma demonstração - na versão final, os dados serão salvos no banco de dados)`);
+  // Send AJAX request to Django backend
+  fetch(`/accounts/users/update/${u.id}/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      role: role,
+      active: status
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Update local data
+      u.role = role;
+      u.active = status;
+      
+      // Update badge class
+      const map = { 'Leitor':'badge-leitor', 'Administrador':'badge-admin', 'Bibliotecário':'badge-biblio' };
+      u.badgeClass = map[u.role] || 'badge-leitor';
+      
+      // Re-render table, update statistics, and close modal
+      updateStatistics();
+      renderTable();
+      closeEditUserModal();
+      
+      // Show success message
+      alert(data.message);
+    } else {
+      alert(`Erro: ${data.message}`);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Erro ao atualizar usuário. Tente novamente.');
+  });
 }
 
 // Close modal when clicking outside of it

@@ -255,7 +255,9 @@
     <p>Bem-vindo ao LUMEN — seu acervo pessoal de empréstimos.</p>
     <div class="hero-actions">
       <a href="{% url 'browse_collection' %}" class="btn-primary-lumen">Explorar Acervo</a>
-      <a href="{% url 'manage_users' %}" class="btn-outline-lumen">Gerenciar Usuários</a>
+      {% if user.is_superuser or user.role == 'admin' %}
+        <a href="{% url 'manage_users' %}" class="btn-outline-lumen">Gerenciar Usuários</a>
+      {% endif %}
     </div>
   </div>
 

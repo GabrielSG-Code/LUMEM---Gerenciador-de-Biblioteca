@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #f8f9fa;
+    --ink: #1a1612;
+    --muted: #7a6f64;
+    --accent: #c0392b;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --primary: #6396ff;
+    --card-shadow: 0 8px 32px rgba(0,0,0,0.13);
+  }
+
+  .lumen-loans {
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 48px 32px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── Header ── */
+  .loans-header {
+    max-width: 1200px;
+    margin: 0 auto 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .loans-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    color: var(--ink);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .btn-new-loan {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-new-loan:hover {
+    background: #4d7de8;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 150, 255, 0.3);
+  }
+
+  /* ── Loans Table ── */
+  .loans-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .loans-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+  }
+
+  .table-responsive {
+    border-radius: 12px;
+  }
+
+  .table {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+  }
+
+  .table th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: var(--ink);
+    padding: 16px 12px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .table td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* ── Status Badges ── */
+  .status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-reservation { background: #e3f2fd; color: #1976d2; }
+  .status-returned { background: #e8f5e8; color: var(--success); }
+  .status-overdue { background: #ffebee; color: var(--danger); }
+  .status-active { background: #e7f3ff; color: var(--primary); }
+
+  /* ── Action Buttons ── */
+  .btn-return {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .btn-return:hover {
+    background: #219a52;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  /* ── Alert Messages ── */
+  .alert {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+
+  /* ── Modal Styling ── */
+  .modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+
+  .modal-header {
+    background: var(--primary);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+    padding: 20px 24px;
+  }
+
+  .modal-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .btn-close {
+    filter: brightness(0) invert(1);
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .form-label {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .form-control:focus, .form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 150, 255, 0.1);
+  }
+
+  .btn-modal-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .btn-modal-primary:hover {
+    background: #4d7de8;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .loans-header {
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .table th, .table td {
+      padding: 12px 8px;
+      font-size: 0.8rem;
+    }
+
+    .lumen-loans {
+      padding: 24px 16px;
+    }
+  }
+</style>
+
+<div class="lumen-loans">
+  <!-- Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Header -->
+  <div class="loans-header">
+    <h1>Gerenciar Empréstimos</h1>
+    <button type="button" class="btn-new-loan" data-bs-toggle="modal" data-bs-target="#newLoanModal">
+      <span>+</span> Novo Empréstimo
+    </button>
+  </div>
+
+  <!-- Loans Table -->
+  <div class="loans-container">
+    <div class="loans-card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID Empréstimo</th>
+              <th>Usuário</th>
+              <th>Livro</th>
+              <th>Data Início</th>
+              <th>Data Entrega</th>
+              <th>Data Devolução</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in loans %}
+              <tr>
+                <td><code>{{ loan.loan_id|default:"N/A" }}</code></td>
+                <td><strong>{{ loan.user_name }}</strong></td>
+                <td>{{ loan.book_title }}</td>
+                <td>{{ loan.start_date|date:"d/m/Y"|default:"N/A" }}</td>
+                <td>{{ loan.due_date|date:"d/m/Y"|default:"N/A" }}</td>
+                <td>
+                  {% if loan.return_date %}
+                    <span style="color: var(--success); font-weight: 600;">{{ loan.return_date|date:"d/m/Y" }}</span>
+                  {% else %}
+                    <span style="color: var(--warning);">Não devolvido</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if loan.is_reservation %}
+                    <span class="status-badge status-reservation">Reserva</span>
+                  {% elif loan.return_date %}
+                    <span class="status-badge status-returned">Devolvido</span>
+                  {% elif loan.is_overdue %}
+                    <span class="status-badge status-overdue">Atrasado</span>
+                  {% else %}
+                    <span class="status-badge status-active">Ativo</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if not loan.return_date %}
+                    <a href="{% url 'return_book' loan.id %}" 
+                       class="btn-return"
+                       onclick="return confirm('Confirmar devolução?')">
+                      Devolver
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" style="text-align: center; color: var(--muted); padding: 40px; font-style: italic;">
+                  Nenhum empréstimo encontrado
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Loan Modal -->
+<div class="modal fade" id="newLoanModal" tabindex="-1" aria-labelledby="newLoanModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="newLoanModalLabel">Criar Novo Empréstimo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        <div class="modal-body">
+          {% csrf_token %}
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ loan_form.user.id_for_label }}" class="form-label">Usuário</label>
+              {{ loan_form.user }}
+              {% if loan_form.user.errors %}
+                <div class="text-danger mt-1">{{ loan_form.user.errors }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="{{ loan_form.book.id_for_label }}" class="form-label">Livro</label>
+              {{ loan_form.book }}
+              {% if loan_form.book.errors %}
+                <div class="text-danger mt-1">{{ loan_form.book.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ loan_form.data_inicio.id_for_label }}" class="form-label">Data de Início</label>
+              {{ loan_form.data_inicio }}
+              {% if loan_form.data_inicio.errors %}
+                <div class="text-danger mt-1">{{ loan_form.data_inicio.errors }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="{{ loan_form.data_entrega.id_for_label }}" class="form-label">Data de Entrega</label>
+              {{ loan_form.data_entrega }}
+              {% if loan_form.data_entrega.errors %}
+                <div class="text-danger mt-1">{{ loan_form.data_entrega.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-check">
+              {{ loan_form.reserva }}
+              <label class="form-check-label" for="{{ loan_form.reserva.id_for_label }}">
+                É uma reserva
+              </label>
+            </div>
+            {% if loan_form.reserva.errors %}
+              <div class="text-danger mt-1">{{ loan_form.reserva.errors }}</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-modal-primary">Criar Empréstimo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Set default dates when modal opens
+  document.getElementById('newLoanModal').addEventListener('show.bs.modal', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14); // 2 weeks from today
+    
+    const startInput = document.getElementById('id_data_inicio');
+    const endInput = document.getElementById('id_data_entrega');
+    
+    if (!startInput.value) startInput.value = today;
+    if (!endInput.value) endInput.value = dueDate.toISOString().split('T')[0];
+  });
+
+  // Auto-close alerts after 5 seconds
+  setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+      const bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    });
+  }, 5000);
+</script>
+
+{% endblock %}

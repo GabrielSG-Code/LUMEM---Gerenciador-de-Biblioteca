@@ -1,90 +1,73 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 import os
 from datetime import datetime, timedelta
 
 def home(request):
-    # Mock loan data for now - replace with actual model queries later
-    loans = []
-    if request.user.is_authenticated:
-        # Create mock loan objects
-        class MockBook:
-            def __init__(self, title, author, category):
-                self.title = title
-                self.author = author
-                self.category = category
-            
-            def get_category_display(self):
-                categories = {
-                    'investigacao': 'Investigação',
-                    'romance': 'Romance', 
-                    'ficcao': 'Ficção',
-                    'terror': 'Terror',
-                    'historico': 'Histórico',
-                    'drama': 'Drama'
-                }
-                return categories.get(self.category, self.category.title())
+    if not request.user.is_authenticated:
+        # Show public home page for non-authenticated users
+        return render(request, 'public_home.html')
+    
+    # Show dashboard for authenticated users
+    # Get real loans from database for the current user
+    try:
+        # Import models inside the function to avoid circular imports
+        from apps.accounts.models import Emprestimo, Livros
         
-        class MockLoan:
-            def __init__(self, book, due_date):
-                self.book = book
-                self.due_date = due_date
-                self.is_overdue = due_date < datetime.now().date()
+        # Get loans for current user using user ID as string
+        user_loans = Emprestimo.objects.filter(
+            id_usuario=str(request.user.id),
+            data_fim__isnull=True  # Only active loans (not returned)
+        ).order_by('data_entrega')
         
-        # Sample loans
-        loans = [
-            MockLoan(MockBook("1984", "George Orwell", "drama"), datetime.now().date() + timedelta(days=5)),
-            MockLoan(MockBook("O Código Da Vinci", "Dan Brown", "investigacao"), datetime.now().date() - timedelta(days=2)),
-        ]
+        loans = []
+        for emprestimo in user_loans:
+            try:
+                # Get book details
+                livro = Livros.objects.get(id_livro=emprestimo.id_livro)
+                
+                # Create loan object with book details and due date
+                class BookData:
+                    def __init__(self, title, author, category):
+                        self.title = title
+                        self.author = author
+                        self.category = category
+                    
+                    def get_category_display(self):
+                        categories = {
+                            'investigacao': 'Investigação',
+                            'romance': 'Romance', 
+                            'ficcao': 'Ficção',
+                            'terror': 'Terror',
+                            'historico': 'Histórico',
+                            'drama': 'Drama'
+                        }
+                        return categories.get(self.category, self.category.title() if self.category else 'Sem categoria')
+                
+                class LoanData:
+                    def __init__(self, book_title, book_author, book_category, due_date):
+                        self.book = BookData(book_title, book_author, book_category)
+                        self.due_date = due_date
+                        self.is_overdue = due_date < datetime.now().date() if due_date else False
+                
+                loan = LoanData(
+                    livro.titulo,
+                    livro.autor,
+                    livro.genero,
+                    emprestimo.data_entrega
+                )
+                loans.append(loan)
+                
+            except Livros.DoesNotExist:
+                # Skip loans for books that don't exist
+                continue
+                
+    except Exception as e:
+        # If there's any error, show empty loans list
+        print(f"Error loading loans: {e}")
+        loans = []
     
     return render(request, 'home.html', {'loans': loans})
 
-def browse_collection(request):
-    # Mock book collection data - replace with actual model queries later
-    class MockBook:
-        def __init__(self, title, author, category, available=True):
-            self.title = title
-            self.author = author
-            self.category = category
-            self.available = available
-        
-        def get_category_display(self):
-            categories = {
-                'investigacao': 'Investigação',
-                'romance': 'Romance', 
-                'ficcao': 'Ficção',
-                'terror': 'Terror',
-                'historico': 'Histórico',
-                'drama': 'Drama'
-            }
-            return categories.get(self.category, self.category.title())
-    
-    # Sample collection
-    books = [
-        MockBook("O Nome da Rosa", "Umberto Eco", "investigacao", True),
-        MockBook("Orgulho e Preconceito", "Jane Austen", "romance", True),
-        MockBook("Duna", "Frank Herbert", "ficcao", False),
-        MockBook("It — A Coisa", "Stephen King", "terror", True),
-        MockBook("Sapiens", "Yuval Harari", "historico", True),
-        MockBook("A Menina que Roubava Livros", "Markus Zusak", "drama", False),
-        MockBook("O Código Da Vinci", "Dan Brown", "investigacao", True),
-        MockBook("1984", "George Orwell", "ficcao", True),
-        MockBook("Dom Casmurro", "Machado de Assis", "drama", True),
-        MockBook("O Cortiço", "Aluísio Azevedo", "historico", True),
-        MockBook("A Metamorfose", "Franz Kafka", "ficcao", True),
-        MockBook("O Pequeno Príncipe", "Antoine de Saint-Exupéry", "drama", True),
-    ]
-    
-    return render(request, 'browse_collection.html', {'books': books})
-
-def manage_users(request):
-    # Mock user statistics for now - replace with actual model queries later
-    context = {
-        'total_users': 24,
-        'admin_count': 1,
-        'librarian_count': 3,
-        'reader_count': 20,
-    }
-    
-    return render(request, 'manage_users.html', context)
 
