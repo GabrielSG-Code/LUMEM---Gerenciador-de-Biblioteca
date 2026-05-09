@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}LUMEN - Sistema de Gerenciamento de Biblioteca{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --bg-gradient: linear-gradient(135deg, #f0f3fb 0%, #e8f0fe 100%);
+        --ink: #1e2a45;
+        --muted: #6b7a99;
+        --accent: #6396ff;
+        --blue-hover: #4d7de8;
+        --white: #ffffff;
+        --green: #3dbe78;
+        --card-shadow: 0 8px 32px rgba(99,150,255,0.13);
+        --subtle-shadow: 0 4px 16px rgba(99,150,255,0.08);
+    }
+
+    /* Override body styles for this page */
+    body {
+        background: var(--bg-gradient) !important;
+        min-height: 100vh;
+        padding-bottom: 0 !important;
+    }
+
+    .container {
+        max-width: 1200px !important;
+        padding: 0 32px !important;
+    }
+
+    /* Hero Section */
+    .hero {
+        text-align: center;
+        padding: 80px 0 60px;
+    }
+
+    .hero h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(3rem, 6vw, 4.5rem);
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 24px;
+        line-height: 1.1;
+    }
+
+    .hero .accent {
+        color: var(--accent);
+    }
+
+    .hero p {
+        font-size: 1.25rem;
+        color: var(--muted);
+        max-width: 600px;
+        margin: 0 auto 40px;
+        line-height: 1.6;
+    }
+
+    .cta-button {
+        display: inline-block;
+        background: var(--accent);
+        color: white;
+        padding: 16px 32px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s;
+    }
+
+    .cta-button:hover {
+        background: var(--blue-hover);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(99,150,255,0.3);
+        text-decoration: none;
+    }
+
+
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .hero {
+            padding: 40px 0 30px;
+        }
+
+
+        .container {
+            padding: 0 20px !important;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .cta-button {
+            padding: 14px 24px;
+            font-size: 1rem;
+        }
+
+    }
+</style>
+
+<main>
+    <section class="hero">
+        <h1>Bem-vindo ao <span class="accent">LUMEN</span></h1>
+        <p>Sistema moderno de gerenciamento de biblioteca que facilita o acesso aos livros e otimiza a gestão do acervo bibliográfico.</p>
+        <a href="{% url 'register' %}" class="cta-button">Começar Agora</a>
+    </section>
+
+</main>
+{% endblock %}

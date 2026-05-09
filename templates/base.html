@@ -1,50 +1,95 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumen - Biblioteca</title>
+    <title>{% block title %}LUMEN - Biblioteca{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root { 
-            --primary-color: #2c3e50; 
-            --secondary-color: #34495e;
-            --bg: #f8f9fa;
-            --ink: #1a1612;
-            --muted: #7a6f64;
-            --accent: #c0392b;
+            --primary-color: #6396ff; 
+            --secondary-color: #4d7de8;
+            --bg: #f0f3fb;
+            --ink: #1e2a45;
+            --muted: #6b7a99;
+            --accent: #6396ff;
+            --blue-nav: #6396ff;
+            --blue-light: #85adff;
+            --blue-hover: #4d7de8;
+            --white: #ffffff;
         }
         
         body { 
             background-color: var(--bg); 
-            font-family: 'DM Sans', sans-serif; 
+            font-family: 'DM Sans', sans-serif;
+            padding-top: 70px;
+        }
+
+        /* Responsive padding adjustments */
+        @media (max-width: 991px) {
+            body {
+                padding-top: 60px;
+            }
+            .navbar {
+                padding: 6px 0;
+            }
+            .navbar-brand img {
+                height: 64px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                padding-top: 55px;
+            }
+            .navbar {
+                padding: 4px 0;
+            }
+            .navbar-brand img {
+                height: 56px;
+            }
         }
         
         /* ── Updated Navbar ── */
         .navbar {
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(26, 22, 18, 0.08);
-            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-            padding: 16px 0;
+            background: var(--blue-nav) !important;
+            border-bottom: none;
+            box-shadow: 0 2px 12px rgba(30,42,69,.25);
+            padding: 8px 0;
             transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            width: 100%;
         }
         
         .navbar-brand {
-            font-family: 'Playfair Display', serif !important;
-            font-size: 1.4rem !important;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 1.15rem !important;
             font-weight: 700 !important;
-            color: var(--ink) !important;
-            letter-spacing: -0.01em;
+            color: var(--white) !important;
+            letter-spacing: 0.06em;
             text-decoration: none !important;
+        }
+
+        .navbar-brand img {
+            height: 76px;
+            width: auto;
         }
         
         .navbar-nav .nav-link {
             font-family: 'DM Sans', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
-            color: var(--ink) !important;
+            color: rgba(255,255,255,.85) !important;
             padding: 8px 16px !important;
             margin: 0 4px;
             border-radius: 6px;
@@ -53,13 +98,13 @@
         }
         
         .navbar-nav .nav-link:hover {
-            color: var(--accent) !important;
-            background-color: rgba(192, 57, 43, 0.05);
+            color: #fff !important;
         }
         
         .navbar-nav .nav-link.active {
-            color: var(--accent) !important;
-            background-color: rgba(192, 57, 43, 0.08);
+            color: #fff !important;
+            text-decoration: underline;
+            text-underline-offset: 3px;
         }
         
         .navbar-toggler {
@@ -72,13 +117,13 @@
         }
         
         .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%231a1612' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
         }
         
         /* ── Register Button ── */
         .btn-register {
-            background: var(--ink) !important;
-            color: #fff !important;
+            background: var(--white) !important;
+            color: var(--blue-nav) !important;
             border: none !important;
             padding: 8px 20px !important;
             border-radius: 6px !important;
@@ -91,20 +136,20 @@
         }
         
         .btn-register:hover {
-            background: var(--accent) !important;
-            color: #fff !important;
+            background: var(--blue-light) !important;
+            color: var(--white) !important;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(192, 57, 43, 0.3);
+            box-shadow: 0 4px 12px rgba(99, 150, 255, 0.3);
         }
         
         /* ── Logout Link ── */
         .logout-link {
-            color: var(--muted) !important;
+            color: rgba(255,255,255,.7) !important;
             font-size: 0.9rem !important;
         }
         
         .logout-link:hover {
-            color: var(--accent) !important;
+            color: #fff !important;
         }
         
         .btn-primary { background-color: var(--primary-color); border: none; }
@@ -112,9 +157,11 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg mb-4">
+    <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">📖 Lumen</a>
+            <a class="navbar-brand" href="/">
+                <img src="{% static 'images/logo.png' %}" alt="Lumen Logo">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -124,12 +171,25 @@
                         <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
                     {% endif %}
                     {% if user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'browse_collection' %}">Explorar Acervo</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Meus Empréstimos</a></li>
+                        {% if request.resolver_match.url_name != 'browse_collection' %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'browse_collection' %}">Explorar Acervo</a></li>
+                        {% endif %}
+                        {% if user.is_superuser or user.role == 'admin' %}
+                            {% if request.resolver_match.url_name != 'manage_users' %}
+                                <li class="nav-item"><a class="nav-link" href="{% url 'manage_users' %}">Usuários</a></li>
+                            {% endif %}
+                        {% endif %}
+                        {% if request.resolver_match.url_name != 'manage_loans' %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'manage_loans' %}">Meus Empréstimos</a></li>
+                        {% endif %}
                         <li class="nav-item"><a class="nav-link logout-link" href="{% url 'logout' %}">Sair</a></li>
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Entrar</a></li>
-                        <li class="nav-item"><a class="btn-register" href="{% url 'register' %}">Cadastrar</a></li>
+                        {% if request.resolver_match.url_name != 'login' %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Entrar</a></li>
+                        {% endif %}
+                        {% if request.resolver_match.url_name != 'register' %}
+                            <li class="nav-item"><a class="btn-register" href="{% url 'register' %}">Cadastrar</a></li>
+                        {% endif %}
                     {% endif %}
                 </ul>
             </div>

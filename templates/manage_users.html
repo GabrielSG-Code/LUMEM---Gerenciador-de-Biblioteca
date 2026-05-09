@@ -1,0 +1,859 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciamento de Usuários - LUMEN{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --blue-nav:   #6396ff;
+    --blue-light: #85adff;
+    --blue-soft:  #eaf0ff;
+    --blue-btn:   #6396ff;
+    --blue-hover: #4d7de8;
+    --lavender:   #c4b8ff;
+    --lavender-bg:#f0f3fb;
+    --cyan-tag:   #91e6de;
+    --cyan-dark:  #2aada3;
+    --gray-text:  #6b7a99;
+    --dark-text:  #1e2a45;
+    --white:      #ffffff;
+    --green:      #3dbe78;
+    --red-soft:   #f5b8b8;
+    --shadow-sm:  0 2px 8px rgba(99,150,255,.10);
+    --shadow-md:  0 4px 20px rgba(99,150,255,.18);
+    --radius:     14px;
+    --radius-sm:  8px;
+  }
+
+  body {
+    background: var(--lavender-bg);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── PAGE SHELL ── */
+  .page {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 32px 24px 48px;
+  }
+
+  h1 {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 1.55rem;
+    color: var(--dark-text);
+    margin-bottom: 24px;
+  }
+
+  /* ── STAT CARDS ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: box-shadow .2s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-md); }
+
+  .stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .82rem;
+    color: var(--gray-text);
+    font-weight: 500;
+  }
+
+  .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-blue     { background: #6396ff; }
+  .dot-gray     { background: #bdc9e0; }
+  .dot-cyan     { background: #91e6de; }
+  .dot-lavender { background: #c4b8ff; }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--dark-text);
+    line-height: 1;
+  }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aab2c8;
+    width: 17px; height: 17px;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1.5px solid #dde3f0;
+    border-radius: 50px;
+    background: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .88rem;
+    color: var(--dark-text);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .search-wrap input:focus {
+    border-color: var(--blue-btn);
+    box-shadow: 0 0 0 3px rgba(99,150,255,.15);
+  }
+  .search-wrap input::placeholder { color: #aab2c8; }
+
+  .filter-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .filter-btn {
+    padding: 8px 18px;
+    border-radius: 50px;
+    border: 1.5px solid #dde3f0;
+    background: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--gray-text);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .filter-btn:hover { border-color: var(--blue-btn); color: var(--blue-btn); }
+  .filter-btn.active {
+    background: var(--blue-btn);
+    border-color: var(--blue-btn);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99,150,255,.32);
+  }
+
+  /* ── TABLE CARD ── */
+  .table-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead tr {
+    background: var(--lavender-bg);
+  }
+  thead th {
+    padding: 13px 20px;
+    text-align: left;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--blue-nav);
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-top: 1px solid #edf0f8;
+    transition: background .15s;
+  }
+  tbody tr:hover { background: #f7f9fe; }
+
+  td { padding: 14px 20px; vertical-align: middle; }
+
+  /* avatar */
+  .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: .82rem;
+    flex-shrink: 0;
+    letter-spacing: .03em;
+  }
+  .av-blue   { background: #dce8ff; color: #6396ff; }
+  .av-gray   { background: #e5e8f0; color: #6b7a99; }
+  .av-purple { background: #e8e2ff; color: #5a3fa0; }
+  .av-cyan   { background: #c0f5f0; color: #1a6b65; }
+
+  .user-cell { display: flex; align-items: center; gap: 12px; }
+  .user-name  { font-weight: 600; font-size: .9rem; color: var(--dark-text); }
+  .user-email { font-size: .78rem; color: var(--gray-text); margin-top: 1px; }
+
+  /* badges */
+  .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 50px;
+    font-size: .78rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-leitor { background: #c4b8ff; color: #4a2fa0; }
+  .badge-admin  { background: #bdc9e0; color: #374466; }
+  .badge-biblio { background: #91e6de; color: #1a6b65; }
+
+  /* status */
+  .status { display: flex; align-items: center; gap: 7px; font-size: .85rem; font-weight: 500; }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.active   { background: var(--green); box-shadow: 0 0 0 3px rgba(61,190,120,.15); }
+  .status-dot.inactive { background: #b0b8cc; }
+
+  .last-access { font-size: .85rem; color: var(--gray-text); }
+
+  .btn-edit {
+    padding: 6px 16px;
+    background: #eef1fb;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--blue-nav);
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    white-space: nowrap;
+  }
+  .btn-edit:hover { background: var(--blue-btn); color: #fff; }
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 20px;
+    border-top: 1px solid #edf0f8;
+  }
+
+  .page-btn {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #dde3f0;
+    background: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--gray-text);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .page-btn:hover { border-color: var(--blue-btn); color: var(--blue-btn); }
+  .page-btn.active {
+    background: var(--blue-btn);
+    border-color: var(--blue-btn);
+    color: #fff;
+  }
+
+  .page-ellipsis {
+    padding: 0 8px;
+    font-size: .84rem;
+    color: var(--gray-text);
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── MODAL ── */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1040;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    background: var(--white);
+    margin: 5% auto;
+    padding: 32px;
+    border-radius: var(--radius);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    animation: modalSlideIn 0.3s ease;
+  }
+
+  @keyframes modalSlideIn {
+    from {
+      transform: translateY(-30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .close-modal {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 24px;
+    color: var(--gray-text);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+    transition: color .2s;
+  }
+  .close-modal:hover {
+    color: var(--dark-text);
+  }
+
+  .modal h2 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark-text);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .modal p {
+    color: var(--gray-text);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-text);
+  }
+
+  .form-group .form-desc {
+    font-size: 0.8rem;
+    color: var(--gray-text);
+    margin-bottom: 8px;
+    font-weight: 400;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #dde3f0;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    transition: border-color 0.2s;
+    background: var(--white);
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: var(--blue-btn);
+    box-shadow: 0 0 0 3px rgba(99,150,255,.15);
+  }
+
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+  }
+
+  .toggle-info {
+    flex: 1;
+  }
+
+  .toggle-wrap { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+  }
+  
+  .toggle { 
+    position: relative; 
+    width: 46px; 
+    height: 26px; 
+  }
+  
+  .toggle input { 
+    opacity: 0; 
+    width: 0; 
+    height: 0; 
+  }
+  
+  .slider {
+    position: absolute; 
+    inset: 0;
+    background: #dde3f0;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 20px; 
+    height: 20px;
+    left: 3px; 
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  }
+  
+  .toggle input:checked + .slider { 
+    background: var(--green); 
+  }
+  
+  .toggle input:checked + .slider::before { 
+    transform: translateX(20px); 
+  }
+  
+  .toggle-label { 
+    font-size: .88rem; 
+    font-weight: 500; 
+  }
+
+  .form-warning {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .78rem;
+    color: #e07060;
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: rgba(224, 112, 96, 0.08);
+    border-radius: var(--radius-sm);
+  }
+  .form-warning svg { 
+    width: 15px; 
+    height: 15px; 
+    flex-shrink: 0; 
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #edf0f8;
+  }
+
+  .btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--gray-text);
+    border: 1.5px solid #dde3f0;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background: var(--lavender-bg);
+    border-color: var(--blue-btn);
+    color: var(--blue-btn);
+  }
+
+  .btn-primary {
+    padding: 10px 20px;
+    background: var(--blue-btn);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: var(--blue-hover);
+  }
+
+  /* responsive */
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    thead th:nth-child(4) { display: none; }
+    td:nth-child(4) { display: none; }
+  }
+</style>
+
+<div class="page">
+  <h1>Gerenciamento de usuários</h1>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-label"><span class="dot dot-blue"></span>Total de usuários</span>
+      <span class="stat-value" id="total-users">{{ stats.total }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label"><span class="dot dot-gray"></span>Administradores</span>
+      <span class="stat-value" id="admin-count">{{ stats.admin }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label"><span class="dot dot-cyan"></span>Bibliotecários</span>
+      <span class="stat-value" id="librarian-count">{{ stats.librarian }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label"><span class="dot dot-lavender"></span>Leitores</span>
+      <span class="stat-value" id="reader-count">{{ stats.reader }}</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Busca por nome ou e-mail" oninput="filterUsers()"/>
+    </div>
+    <div class="filter-btns">
+      <button class="filter-btn active" onclick="setFilter('Todos', this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('Administrador', this)">Administrador</button>
+      <button class="filter-btn" onclick="setFilter('Bibliotecário', this)">Bibliotecário</button>
+      <button class="filter-btn" onclick="setFilter('Leitor', this)">Leitor</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Perfil</th>
+          <th>Status</th>
+          <th>Último acesso</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="userTable">
+        <!-- rows injected by JS -->
+      </tbody>
+    </table>
+    <div class="pagination">
+      <!-- Pagination buttons will be generated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeEditUserModal()">&times;</button>
+      
+      <h2>Editar Usuário</h2>
+      <p>Altere as permissões e status do usuário <strong id="editUserName"></strong></p>
+      
+      <form class="user-form" onsubmit="handleEditUser(event)">
+        <div class="form-group">
+          <label for="editUserRole">Perfil de acesso</label>
+          <div class="form-desc">Define as permissões do usuário no sistema</div>
+          <select id="editUserRole" name="role" required>
+            <option value="Leitor">Leitor</option>
+            <option value="Bibliotecário">Bibliotecário</option>
+            <option value="Administrador">Administrador</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <div class="toggle-group">
+            <div class="toggle-info">
+              <label>Status da conta</label>
+              <div class="form-desc">Ativar ou desativar o acesso deste usuário ao sistema</div>
+            </div>
+            <div class="toggle-wrap">
+              <label class="toggle">
+                <input type="checkbox" id="editUserStatus" name="status" checked onchange="updateToggleLabel()"/>
+                <span class="slider"></span>
+              </label>
+              <span class="toggle-label" id="toggleLabel">Ativo</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-warning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/>
+          </svg>
+          As alterações serão aplicadas imediatamente
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeEditUserModal()">Cancelar</button>
+          <button type="submit" class="btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Get Django user data
+const allUsers = [
+{% for user in users %}
+  {
+    id: {{ user.id }},
+    initials: '{{ user.initials }}',
+    avatarClass: 'av-blue',
+    name: '{{ user.name|escapejs }}',
+    email: '{{ user.email|escapejs }}',
+    role: '{{ user.role|escapejs }}',
+    badgeClass: {% if user.role == 'Administrador' %}'badge-admin'{% elif user.role == 'Bibliotecário' %}'badge-biblio'{% else %}'badge-leitor'{% endif %},
+    active: {{ user.active|yesno:'true,false' }},
+    lastAccess: '{{ user.last_login }}'
+  }{% if not forloop.last %},{% endif %}
+{% empty %}
+  // No users found
+{% endfor %}
+];
+
+let currentFilter = 'Todos';
+let currentSearch = '';
+let editingIndex = null;
+let currentPage = 1;
+const usersPerPage = 10;
+
+function getFilteredUsers() {
+  const query = currentSearch.toLowerCase();
+  return allUsers.filter(u => {
+    const matchFilter = currentFilter === 'Todos' || u.role === currentFilter;
+    const matchSearch = u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query);
+    return matchFilter && matchSearch;
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('userTable');
+  const filteredUsers = getFilteredUsers();
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const startIndex = (currentPage - 1) * usersPerPage;
+  const endIndex = startIndex + usersPerPage;
+  const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Render table rows
+  tbody.innerHTML = pageUsers.map((u) => `
+    <tr>
+      <td>
+        <div class="user-cell">
+          <div class="avatar ${u.avatarClass}">${u.initials}</div>
+          <div>
+            <div class="user-name">${u.name}</div>
+            <div class="user-email">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${u.badgeClass}">${u.role}</span></td>
+      <td>
+        <div class="status">
+          <span class="status-dot ${u.active ? 'active' : 'inactive'}"></span>
+          ${u.active ? 'Ativo' : 'Inativo'}
+        </div>
+      </td>
+      <td><span class="last-access">${u.lastAccess}</span></td>
+      <td><button class="btn-edit" onclick="openEdit(${allUsers.indexOf(u)})">Editar perfil</button></td>
+    </tr>
+  `).join('');
+
+  // Render pagination
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const pagination = document.querySelector('.pagination');
+  let paginationHTML = '';
+  
+  // Previous button
+  if (currentPage > 1) {
+    paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage - 1})">‹</button>`;
+  }
+  
+  // Page numbers
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === currentPage) {
+      paginationHTML += `<button class="page-btn active" onclick="goToPage(${i})">${i}</button>`;
+    } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
+      paginationHTML += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
+    } else if (i === currentPage - 2 || i === currentPage + 2) {
+      paginationHTML += `<span class="page-ellipsis">...</span>`;
+    }
+  }
+  
+  // Next button
+  if (currentPage < totalPages) {
+    paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage + 1})">›</button>`;
+  }
+  
+  pagination.innerHTML = paginationHTML;
+}
+
+function goToPage(page) {
+  const filteredUsers = getFilteredUsers();
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  
+  if (page >= 1 && page <= totalPages) {
+    currentPage = page;
+    renderTable();
+  }
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPage = 1; // Reset to first page when filter changes
+  renderTable();
+}
+
+function filterUsers() {
+  currentSearch = document.getElementById('searchInput').value;
+  currentPage = 1; // Reset to first page when search changes
+  renderTable();
+}
+
+function openEdit(idx) {
+  editingIndex = idx;
+  const u = allUsers[idx];
+  document.getElementById('editUserName').textContent = u.name;
+  document.getElementById('editUserRole').value = u.role;
+  document.getElementById('editUserStatus').checked = u.active;
+  updateToggleLabel();
+  const modal = document.getElementById('editUserModal');
+  modal.style.display = 'block';
+}
+
+function closeEditUserModal() {
+  editingIndex = null;
+  document.getElementById('editUserModal').style.display = 'none';
+  // Reset form
+  document.querySelector('.user-form').reset();
+}
+
+function updateToggleLabel() {
+  const on = document.getElementById('editUserStatus').checked;
+  document.getElementById('toggleLabel').textContent = on ? 'Ativo' : 'Inativo';
+}
+
+function handleEditUser(event) {
+  event.preventDefault();
+  
+  if (editingIndex === null) return;
+  
+  // Get form data
+  const formData = new FormData(event.target);
+  const role = formData.get('role');
+  const status = formData.get('status') === 'on';
+  
+  const u = allUsers[editingIndex];
+  
+  // Send AJAX request to Django backend
+  fetch(`/accounts/users/update/${u.id}/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      role: role,
+      active: status
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Update local data
+      u.role = role;
+      u.active = status;
+      
+      // Update badge class
+      const map = { 'Leitor':'badge-leitor', 'Administrador':'badge-admin', 'Bibliotecário':'badge-biblio' };
+      u.badgeClass = map[u.role] || 'badge-leitor';
+      
+      // Re-render table, update statistics, and close modal
+      updateStatistics();
+      renderTable();
+      closeEditUserModal();
+      
+      // Show success message
+      alert(data.message);
+    } else {
+      alert(`Erro: ${data.message}`);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Erro ao atualizar usuário. Tente novamente.');
+  });
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+  const modal = document.getElementById('editUserModal');
+  if (event.target === modal) {
+    closeEditUserModal();
+  }
+}
+
+function updateStatistics() {
+  const totalUsers = allUsers.length;
+  const adminCount = allUsers.filter(u => u.role === 'Administrador').length;
+  const librarianCount = allUsers.filter(u => u.role === 'Bibliotecário').length;
+  const readerCount = allUsers.filter(u => u.role === 'Leitor').length;
+
+  document.getElementById('total-users').textContent = totalUsers;
+  document.getElementById('admin-count').textContent = adminCount;
+  document.getElementById('librarian-count').textContent = librarianCount;
+  document.getElementById('reader-count').textContent = readerCount;
+}
+
+// Initialize table on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updateStatistics();
+  renderTable();
+});
+</script>
+{% endblock %}
