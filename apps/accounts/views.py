@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
 from django.contrib import messages
+
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -13,7 +14,8 @@ import json
 
 from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm
 from .models import Livros, User, Emprestimo
-
+from .forms import RegisterForm
+from django.contrib.auth.forms import AuthenticationForm
 
 def register(request):
     if request.method == 'POST':
@@ -24,6 +26,12 @@ def register(request):
             messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
             return redirect('home')
         else:
+            # Automatically log in the user after registration
+            login(request, user)
+            messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
+            return redirect('home')
+        else:
+            # Show form validation errors
             messages.error(request, 'Por favor, corrija os erros abaixo.')
     else:
         form = RegisterForm()
@@ -33,18 +41,10 @@ def register(request):
 
 def login_view(request):
     if request.method == 'POST':
-        form = EmailOrUsernameLoginForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            return redirect('home')
-        else:
-            messages.error(request, 'Email/usuário ou senha inválidos.')
+            messages.error(request, 'Usuário ou senha inválidos.')
     else:
-        form = EmailOrUsernameLoginForm()
-
+        form = AuthenticationForm()
     return render(request, 'accounts/login.html', {'form': form})
-
 
 def logout_view(request):
     logout(request)

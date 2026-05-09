@@ -10,7 +10,6 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.READER)
     email = models.EmailField(unique=True)
 
-
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
 
