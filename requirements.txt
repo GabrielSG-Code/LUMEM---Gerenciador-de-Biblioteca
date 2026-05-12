@@ -6,4 +6,4 @@ openpyxl
 Pillow
 whitenoise
 dj_database_url
-gunicorn
+gunicorn==23.0.0
