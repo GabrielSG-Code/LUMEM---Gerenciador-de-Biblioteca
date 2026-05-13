@@ -164,7 +164,7 @@ def browse_collection(request):
     page_range = list(range(start_page, end_page + 1))
 
     class MockPaginator:
-        def _init_(self, books, page_num, total_books, total_pages):
+        def __init__(self, books, page_num, total_books, total_pages):
             self.object_list = books
             self.number = page_num
             self.paginator = self
