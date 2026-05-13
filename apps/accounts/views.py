@@ -178,10 +178,10 @@ def browse_collection(request):
             self.end_index = lambda: min(start_index + len(books), total_books)
             self.has_other_pages = total_pages > 1
 
-        def _iter_(self):
+        def __iter__(self):
             return iter(self.object_list)
 
-        def _len_(self):
+        def __len__(self):
             return len(self.object_list)
 
     books_page = MockPaginator(books_list, page_number, total_unique_books, total_pages)
