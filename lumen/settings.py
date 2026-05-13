@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ["lumen-a5cs.onrender.com", "https://lumen-homol.onrender.com/", "127.0.0.1"]
+ALLOWED_HOSTS = ["lumen-a5cs.onrender.com", "lumen-homol.onrender.com", "127.0.0.1"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
