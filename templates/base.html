@@ -154,7 +154,123 @@
         
         .btn-primary { background-color: var(--primary-color); border: none; }
         .btn-primary:hover { background-color: var(--secondary-color); }
+        
+        /* ── Profile Avatar & Dropdown Styles ── */
+        .profile-link {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .profile-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            padding: 6px;
+            transition: all 0.2s;
+        }
+        
+        .profile-link:hover .profile-avatar {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .dropdown-menu {
+            border-radius: 12px !important;
+            border: none !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+            padding: 8px !important;
+            margin-top: 8px !important;
+            min-width: 220px;
+        }
+        
+        .dropdown-item {
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            margin: 2px 0 !important;
+            transition: all 0.2s !important;
+            display: flex !important;
+            align-items: center !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .dropdown-item:hover {
+            background: var(--blue-light) !important;
+            color: white !important;
+            transform: translateX(4px) !important;
+        }
+        
+        .dropdown-item svg {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .dropdown-item:hover svg {
+            opacity: 1;
+        }
+        
+        .dropdown-header {
+            padding: 12px 16px 8px !important;
+        }
+        
+        .user-info {
+            text-align: left;
+        }
+        
+        .user-info strong {
+            display: block;
+            color: var(--dark-text, #1e2a45);
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        .user-info small {
+            color: var(--gray-text, #6b7a99);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .logout-item {
+            color: #dc3545 !important;
+        }
+        
+        .logout-item:hover {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+        
+        .dropdown-divider {
+            margin: 8px 0 !important;
+            opacity: 0.3 !important;
+        }
+        
+        /* Quick Links Dropdown */
+        .nav-link.dropdown-toggle {
+            display: flex !important;
+            align-items: center;
+        }
+        
+        /* Responsive dropdown adjustments */
+        @media (max-width: 991px) {
+            .dropdown-menu {
+                position: static !important;
+                float: none !important;
+                width: auto !important;
+                margin-top: 0 !important;
+                background-color: rgba(255,255,255,0.95) !important;
+                border: none !important;
+                border-radius: 8px !important;
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.15) !important;
+            }
+            
+            .dropdown-item:hover {
+                transform: none !important;
+            }
+        }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg">
@@ -171,18 +287,85 @@
                         <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
                     {% endif %}
                     {% if user.is_authenticated %}
-                        {% if request.resolver_match.url_name != 'browse_collection' %}
-                            <li class="nav-item"><a class="nav-link" href="{% url 'browse_collection' %}">Explorar Acervo</a></li>
-                        {% endif %}
-                        {% if user.is_superuser or user.role == 'admin' %}
-                            {% if request.resolver_match.url_name != 'manage_users' %}
-                                <li class="nav-item"><a class="nav-link" href="{% url 'manage_users' %}">Usuários</a></li>
-                            {% endif %}
-                        {% endif %}
-                        {% if request.resolver_match.url_name != 'manage_loans' %}
-                            <li class="nav-item"><a class="nav-link" href="{% url 'manage_loans' %}">Meus Empréstimos</a></li>
-                        {% endif %}
-                        <li class="nav-item"><a class="nav-link logout-link" href="{% url 'logout' %}">Sair</a></li>
+                        <!-- Quick Links Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="quickLinksDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+                                    <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+                                </svg>
+                                Menu
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="quickLinksDropdown">
+                                {% if request.resolver_match.url_name != 'browse_collection' %}
+                                    <li><a class="dropdown-item" href="{% url 'browse_collection' %}">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                        </svg>
+                                        Explorar Acervo
+                                    </a></li>
+                                {% endif %}
+                                {% if user.role != 'reader' %}
+                                    {% if request.resolver_match.url_name != 'manage_loans' %}
+                                        <li><a class="dropdown-item" href="{% url 'manage_loans' %}">
+                                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                                <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                            </svg>
+                                            Gerenciar Empréstimos
+                                        </a></li>
+                                    {% endif %}
+                                {% else %}
+                                    <li><a class="dropdown-item" href="{% url 'manage_loans' %}">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                        </svg>
+                                        Meus Empréstimos
+                                    </a></li>
+                                {% endif %}
+                                {% if user.is_superuser or user.role == 'admin' %}
+                                    {% if request.resolver_match.url_name != 'manage_users' %}
+                                        <li><a class="dropdown-item" href="{% url 'manage_users' %}">
+                                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                                                <path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/>
+                                                <path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
+                                            </svg>
+                                            Gerenciar Usuários
+                                        </a></li>
+                                    {% endif %}
+                                {% endif %}
+                            </ul>
+                        </li>
+                        
+                        <!-- Profile Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link profile-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="https://cdn-icons-png.flaticon.com/512/456/456283.png" alt="Profile" class="profile-avatar">
+                                {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                                <li class="dropdown-header">
+                                    <div class="user-info">
+                                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                        <small>{{ user.get_role_display }}</small>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'profile' %}">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                    </svg>
+                                    Meu Perfil
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item logout-item" href="{% url 'logout' %}">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                        <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                        <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                    </svg>
+                                    Sair
+                                </a></li>
+                            </ul>
+                        </li>
                     {% else %}
                         {% if request.resolver_match.url_name != 'login' %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Entrar</a></li>
@@ -201,5 +384,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

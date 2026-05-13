@@ -1,6 +1,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, get_user_model
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Q, Count
+from django.db import models
 
 from .models import Livros, Emprestimo
 
@@ -94,7 +98,7 @@ class AddBookForm(forms.Form):
 
 class LoanForm(forms.ModelForm):
     user = forms.ModelChoiceField(
-        queryset=User.objects.all(),
+        queryset=User.objects.none(),
         empty_label="Selecione um usuário",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
@@ -103,12 +107,6 @@ class LoanForm(forms.ModelForm):
         empty_label="Selecione um livro",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    data_inicio = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
-    )
-    data_entrega = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
-    )
     reserva = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
@@ -116,19 +114,119 @@ class LoanForm(forms.ModelForm):
 
     class Meta:
         model = Emprestimo
-        fields = ['data_inicio', 'data_entrega', 'reserva']
+        fields = ['reserva']
+
+    def __init__(self, *args, **kwargs):
+        # Extract pre-selected book info if passed
+        preselected_title = kwargs.pop('preselected_title', None)
+        preselected_author = kwargs.pop('preselected_author', None)
+        
+        super().__init__(*args, **kwargs)
+        
+        try:
+            # Get eligible users (readers with < 2 active loans and no overdue loans)
+            today = timezone.now().date()
+            
+            all_readers = User.objects.filter(role='reader')
+            eligible_users = []
+            
+            for user in all_readers:
+                # Count active loans
+                active_loans = Emprestimo.objects.filter(
+                    id_usuario=str(user.id),
+                    data_fim__isnull=True
+                ).count()
+                
+                # Check for overdue loans
+                overdue_loans = Emprestimo.objects.filter(
+                    id_usuario=str(user.id),
+                    data_entrega__lt=today,
+                    data_fim__isnull=True
+                ).count()
+                
+                # User is eligible if < 2 active loans and no overdue loans
+                if active_loans < 2 and overdue_loans == 0:
+                    eligible_users.append(user.id)
+            
+            self.fields['user'].queryset = User.objects.filter(id__in=eligible_users)
+            
+            # Simple book queryset - available books only (with debug)
+            print("DEBUG: Getting book queryset...")
+            all_books = Livros.objects.all()
+            print(f"DEBUG: Total books in database: {all_books.count()}")
+            
+            # Check what status values exist
+            statuses = Livros.objects.values_list('status_livro', flat=True).distinct()
+            print(f"DEBUG: All status values: {list(statuses)}")
+            
+            # Try multiple status variations
+            available_books = Livros.objects.filter(
+                Q(status_livro__iexact='disponível') |
+                Q(status_livro__iexact='Disponível') |
+                Q(status_livro__icontains='disponível') |
+                Q(status_livro__icontains='Disponível') |
+                Q(status_livro__iexact='available') |
+                Q(status_livro__iexact='Available')
+            )
+            print(f"DEBUG: Available books found: {available_books.count()}")
+            
+            # If no books found with status filter, show first 5 books as fallback
+            if available_books.count() == 0:
+                print("DEBUG: No available books found, using all books as fallback")
+                available_books = Livros.objects.all()[:10]  # Limit to 10 for testing
+            
+            self.fields['book'].queryset = available_books
+            self.fields['book'].label_from_instance = lambda obj: f"{obj.titulo} - {obj.autor} (Status: {obj.status_livro})"
+            
+            # If we have pre-selected book info, try to find and set initial value
+            if preselected_title and preselected_author:
+                try:
+                    # Find the first available book matching title and author
+                    available_book = Livros.objects.filter(
+                        titulo=preselected_title,
+                        autor=preselected_author,
+                        status_livro='Disponível'
+                    ).first()
+                    
+                    if available_book:
+                        self.fields['book'].initial = available_book
+                        print(f"DEBUG: Pre-selected book: {available_book.titulo} (ID: {available_book.id_livro})")
+                except Exception as e:
+                    print(f"DEBUG: Could not pre-select book: {e}")
+            
+        except Exception as e:
+            print(f"Error in LoanForm __init__: {e}")
+            import traceback
+            print(traceback.format_exc())
+            # Fallback to basic querysets if there's an error
+            self.fields['user'].queryset = User.objects.filter(role='reader')
+            self.fields['book'].queryset = Livros.objects.all()[:10]  # Show first 10 books as fallback
 
     def save(self, commit=True):
         emprestimo = super().save(commit=False)
         emprestimo.id_usuario = str(self.cleaned_data['user'].id)
-        emprestimo.id_livro = str(self.cleaned_data['book'].id_livro)
+        
+        # Get the selected book object (now it's a ModelChoiceField)
+        book = self.cleaned_data['book']
+        print(f"DEBUG: Selected book: {book.titulo} (ID: {book.id_livro}), current status: {book.status_livro}")
+        
+        emprestimo.id_livro = str(book.id_livro)
+        
+        # Set 7-day loan period automatically
+        emprestimo.data_inicio = timezone.now().date()
+        emprestimo.data_entrega = emprestimo.data_inicio + timedelta(days=7)
+        
         emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"
+        
+        print(f"DEBUG: Creating loan - User: {emprestimo.id_usuario}, Book: {emprestimo.id_livro}, Start: {emprestimo.data_inicio}, Due: {emprestimo.data_entrega}")
         
         if commit:
             emprestimo.save()
+            print(f"DEBUG: Loan saved with ID: {emprestimo.id}")
+            
             # Update book status
-            book = self.cleaned_data['book']
             book.status_livro = 'Emprestado'
             book.save()
+            print(f"DEBUG: Updated book status to: {book.status_livro}")
         
         return emprestimo
