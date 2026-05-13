@@ -26,11 +26,6 @@ def register(request):
             messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
             return redirect('home')
         else:
-            # Automatically log in the user after registration
-            login(request, user)
-            messages.success(request, 'Conta criada com sucesso! Bem-vindo ao LUMEN.')
-            return redirect('home')
-        else:
             # Show form validation errors
             messages.error(request, 'Por favor, corrija os erros abaixo.')
     else:
@@ -41,6 +36,12 @@ def register(request):
 
 def login_view(request):
     if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect('browse_collection')
+        else:
             messages.error(request, 'Usuário ou senha inválidos.')
     else:
         form = AuthenticationForm()
@@ -353,42 +354,102 @@ def add_book(request):
 
 @login_required
 def manage_loans(request):
-    # Handle loan creation via modal
-    loan_form = LoanForm()
-    if request.method == 'POST':
-        loan_form = LoanForm(request.POST)
-        if loan_form.is_valid():
-            loan_form.save()
-            messages.success(request, 'Empréstimo criado com sucesso!')
-            return redirect('manage_loans')
-        else:
-            messages.error(request, 'Por favor, corrija os erros no formulário.')
+    print(f"DEBUG: manage_loans called by user: {request.user.username}, role: {request.user.role}")
     
-    emprestimos = Emprestimo.objects.all().order_by('-data_inicio')
+    # Handle loan creation via modal (only for non-readers)
+    loan_form = None
+    selected_book_id = None
+    if request.user.role != 'reader':
+        print("DEBUG: User is librarian/admin, creating loan form...")
+        # Check for pre-selected book from URL parameters
+        book_title = request.GET.get('book_title')
+        book_author = request.GET.get('book_author')
+        
+        if book_title and book_author:
+            # Find an available book with this title and author
+            try:
+                available_book = Livros.objects.filter(
+                    titulo=book_title,
+                    autor=book_author,
+                    status_livro__iexact='disponível'
+                ).first()
+                if available_book:
+                    selected_book_id = str(available_book.id_livro)
+            except:
+                pass
+        
+        # Pass book info to form if coming from browse route
+        form_kwargs = {}
+        if book_title and book_author:
+            form_kwargs['preselected_title'] = book_title
+            form_kwargs['preselected_author'] = book_author
+        
+        print(f"DEBUG: Creating LoanForm with kwargs: {form_kwargs}")
+        loan_form = LoanForm(**form_kwargs)
+        print("DEBUG: LoanForm created successfully")
+        
+        if request.method == 'POST':
+            loan_form = LoanForm(request.POST)
+            if loan_form.is_valid():
+                loan_form.save()
+                messages.success(request, 'Empréstimo criado com sucesso!')
+                return redirect('manage_loans')
+            else:
+                messages.error(request, 'Por favor, corrija os erros no formulário.')
+    
+    # Filter loans based on user role
+    print("DEBUG: Loading loans...")
+    if request.user.role == 'reader':
+        print("DEBUG: User is reader, loading their loans only")
+        # Readers see only their own loans
+        emprestimos = Emprestimo.objects.filter(
+            id_usuario=str(request.user.id)
+        ).order_by('-data_inicio')
+    else:
+        print("DEBUG: User is librarian/admin, loading all loans")
+        # Librarians and admins see all loans
+        emprestimos = Emprestimo.objects.all().order_by('-data_inicio')
+    
+    print(f"DEBUG: Found {emprestimos.count()} loans")
     
     loans_data = []
     for emp in emprestimos:
+        # Handle user lookup
         try:
             user = User.objects.get(id=emp.id_usuario) if emp.id_usuario else None
+            user_name = user.username if user else f'Usuário ID {emp.id_usuario} (não encontrado)'
+        except User.DoesNotExist:
+            user_name = f'Usuário ID {emp.id_usuario} (não encontrado)'
+        except:
+            user_name = 'Usuário não encontrado'
+        
+        # Handle book lookup
+        try:
             book = Livros.objects.get(id_livro=emp.id_livro) if emp.id_livro else None
-            
-            loans_data.append({
-                'id': emp.id,
-                'loan_id': emp.id_emprestimo,
-                'user_name': user.username if user else 'Usuário não encontrado',
-                'book_title': book.titulo if book else 'Livro não encontrado',
-                'start_date': emp.data_inicio,
-                'due_date': emp.data_entrega,
-                'return_date': emp.data_fim,
-                'is_reservation': emp.reserva,
-                'is_overdue': emp.data_entrega and emp.data_entrega < timezone.now().date() and not emp.data_fim if emp.data_entrega else False
-            })
-        except (User.DoesNotExist, Livros.DoesNotExist):
-            continue
+            book_title = book.titulo if book else f'Livro ID {emp.id_livro} (não encontrado)'
+        except Livros.DoesNotExist:
+            book_title = f'Livro ID {emp.id_livro} (não encontrado)'
+        except:
+            book_title = 'Livro não encontrado'
+        
+        # Add loan data even if user/book not found
+        loans_data.append({
+            'id': emp.id,
+            'loan_id': emp.id_emprestimo or f'EMP_{emp.id}',
+            'user_name': user_name,
+            'book_title': book_title,
+            'start_date': emp.data_inicio,
+            'due_date': emp.data_entrega,
+            'return_date': emp.data_fim,
+            'is_reservation': emp.reserva,
+            'is_overdue': emp.data_entrega and emp.data_entrega < timezone.now().date() and not emp.data_fim if emp.data_entrega else False
+        })
     
     return render(request, 'manage_loans.html', {
         'loans': loans_data,
-        'loan_form': loan_form
+        'loan_form': loan_form,
+        'is_reader': request.user.role == 'reader',
+        'selected_book_id': selected_book_id
     })
 
 
@@ -415,3 +476,57 @@ def return_book(request, loan_id):
         messages.success(request, 'Empréstimo finalizado.')
     
     return redirect('manage_loans')
+
+
+@login_required
+def profile(request):
+    """User profile view showing user information and account details"""
+    # Get user's loan statistics
+    user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
+    active_loans = user_loans.filter(data_fim__isnull=True).count()
+    total_loans = user_loans.count()
+    overdue_loans = user_loans.filter(
+        data_fim__isnull=True,
+        data_entrega__lt=timezone.now().date()
+    ).count()
+    
+    # Get recent loan history (last 5 loans)
+    recent_loans = []
+    for emp in user_loans.order_by('-data_inicio')[:5]:
+        try:
+            if emp.id_livro:
+                try:
+                    book = Livros.objects.get(id_livro=emp.id_livro)
+                    loan_data = {
+                        'book_title': book.titulo,
+                        'start_date': emp.data_inicio,
+                        'due_date': emp.data_entrega,
+                        'return_date': emp.data_fim,
+                        'is_overdue': emp.data_entrega < timezone.now().date() if emp.data_entrega and not emp.data_fim else False,
+                        'status': 'returned' if emp.data_fim else ('overdue' if emp.data_entrega < timezone.now().date() else 'active')
+                    }
+                    recent_loans.append(loan_data)
+                except Livros.DoesNotExist:
+                    loan_data = {
+                        'book_title': f'Livro removido (ID: {emp.id_livro})',
+                        'start_date': emp.data_inicio,
+                        'due_date': emp.data_entrega,
+                        'return_date': emp.data_fim,
+                        'is_overdue': False,
+                        'status': 'returned' if emp.data_fim else 'active'
+                    }
+                    recent_loans.append(loan_data)
+        except Exception:
+            continue
+    
+    context = {
+        'user': request.user,
+        'stats': {
+            'active_loans': active_loans,
+            'total_loans': total_loans,
+            'overdue_loans': overdue_loans,
+        },
+        'recent_loans': recent_loans,
+    }
+    
+    return render(request, 'accounts/profile.html', context)
