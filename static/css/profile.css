@@ -12,6 +12,13 @@
   --radius-sm: 8px;
 }
 
+/* Fix navbar profile avatar size on profile page */
+.nav-link .profile-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 6px !important;
+}
+
 .profile-container {
   max-width: 1200px;
   margin: 0 auto;

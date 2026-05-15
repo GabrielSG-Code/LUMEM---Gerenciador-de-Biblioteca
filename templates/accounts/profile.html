@@ -27,7 +27,7 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">
-          <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="Active Loans">
+          <img src="https://cdn-icons-png.flaticon.com/512/16445/16445661.png" alt="Active Loans">
         </div>
         <div class="stat-info">
           <h3>{{ stats.active_loans }}</h3>
@@ -37,7 +37,7 @@
       
       <div class="stat-card">
         <div class="stat-icon">
-          <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Total Loans">
+          <img src="https://cdn-icons-png.flaticon.com/512/3861/3861478.png" alt="Total Loans">
         </div>
         <div class="stat-info">
           <h3>{{ stats.total_loans }}</h3>
@@ -47,7 +47,7 @@
       
       <div class="stat-card {% if stats.overdue_loans > 0 %}stat-warning{% endif %}">
         <div class="stat-icon">
-          <img src="https://cdn-icons-png.flaticon.com/512/5768/5768181.png" alt="Overdue Loans">
+          <img src="https://cdn-icons-png.flaticon.com/512/6117/6117066.png" alt="Overdue Loans">
         </div>
         <div class="stat-info">
           <h3>{{ stats.overdue_loans }}</h3>
@@ -94,47 +94,6 @@
       {% endif %}
     </div>
 
-    <!-- Quick Actions -->
-    <div class="actions-section">
-      <h2>Ações Rápidas</h2>
-      <div class="actions-grid">
-        <a href="{% url 'browse_collection' %}" class="action-card">
-          <div class="action-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Browse">
-          </div>
-          <h3>Explorar Acervo</h3>
-          <p>Busque por livros disponíveis</p>
-        </a>
-        
-        {% if user.role == 'reader' %}
-        <a href="{% url 'manage_loans' %}" class="action-card">
-          <div class="action-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="Loans">
-          </div>
-          <h3>Meus Empréstimos</h3>
-          <p>Veja seus empréstimos ativos</p>
-        </a>
-        {% else %}
-        <a href="{% url 'manage_loans' %}" class="action-card">
-          <div class="action-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="Manage Loans">
-          </div>
-          <h3>Gerenciar Empréstimos</h3>
-          <p>Administre todos os empréstimos</p>
-        </a>
-        {% endif %}
-        
-        {% if user.is_superuser or user.role == 'admin' %}
-        <a href="{% url 'manage_users' %}" class="action-card">
-          <div class="action-icon">
-            <img src="{% static 'images/logo.png' %}" alt="Users">
-          </div>
-          <h3>Gerenciar Usuários</h3>
-          <p>Administre contas de usuário</p>
-        </a>
-        {% endif %}
-      </div>
-    </div>
   </div>
 </div>
 

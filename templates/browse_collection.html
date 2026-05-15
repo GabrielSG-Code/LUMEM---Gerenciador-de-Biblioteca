@@ -67,7 +67,7 @@
         </div>
 
         <div class="book-illustration">
-          <img src="{{ book.icon_url }}" alt="{{ book.category }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
+          <img src="{{ book.icon_url }}" alt="{{ book.category }}" class="category-icon" data-category="{{ book.category_lower }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
         </div>
 
         <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
@@ -165,7 +165,12 @@
         
         <div class="form-actions">
           <button type="button" class="btn-secondary" onclick="closeAddBookModal()">Cancelar</button>
-          <button type="submit" class="btn-primary">Adicionar Livro</button>
+          <button type="submit" class="btn-primary" id="submitBtn">
+            <svg id="submitIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span id="submitText">Adicionar Livro</span>
+          </button>
         </div>
       </form>
     </div>
@@ -222,5 +227,21 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// Category icons from CSV
+const categoryIcons = {{ category_icons_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Update each book icon directly
+    document.querySelectorAll('.book-cover').forEach(bookCard => {
+        const categoryElement = bookCard.querySelector('.book-category');
+        const imgElement = bookCard.querySelector('.category-icon');
+        
+        if (categoryElement && imgElement && categoryIcons[categoryElement.textContent.trim()]) {
+            imgElement.src = categoryIcons[categoryElement.textContent.trim()];
+        }
+    });
+});
+</script>
 <script src="{% static 'js/browse_collection.js' %}"></script>
 {% endblock %}

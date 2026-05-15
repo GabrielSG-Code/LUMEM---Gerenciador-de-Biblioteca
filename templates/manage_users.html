@@ -61,7 +61,7 @@
         </tr>
       </thead>
       <tbody id="userTable">
-        <!-- rows injected by JS -->
+        <!-- Table rows will be populated by JavaScript -->
       </tbody>
     </table>
     <div class="pagination">
@@ -125,21 +125,20 @@
 {% block extra_js %}
 <script>
 // Initialize Django user data for the external JS file
-allUsers = [
+window.allUsers = [
 {% for user in users %}
   {
     id: {{ user.id }},
-    initials: '{{ user.initials }}',
+    initials: '{{ user.initials|escapejs }}',
     avatarClass: 'av-blue',
     name: '{{ user.name|escapejs }}',
     email: '{{ user.email|escapejs }}',
     role: '{{ user.role|escapejs }}',
     badgeClass: {% if user.role == 'Administrador' %}'badge-admin'{% elif user.role == 'Bibliotecário' %}'badge-biblio'{% else %}'badge-leitor'{% endif %},
-    active: {{ user.active|yesno:'true,false' }},
-    lastAccess: '{{ user.last_login }}'
+    active: {% if user.active %}true{% else %}false{% endif %},
+    lastAccess: '{{ user.last_login|escapejs }}'
   }{% if not forloop.last %},{% endif %}
 {% empty %}
-  // No users found
 {% endfor %}
 ];
 </script>

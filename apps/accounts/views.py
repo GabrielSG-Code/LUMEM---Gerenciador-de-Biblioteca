@@ -65,7 +65,7 @@ def browse_collection(request):
     try:
         possible_paths = [
             os.path.join(settings.BASE_DIR, 'categories.csv'),
-            os.path.join(os.path.dirname(_file_), '..', '..', 'categories.csv'),
+            os.path.join(os.path.dirname(__file__), '..', '..', 'categories.csv'),
             'categories.csv'
         ]
 
@@ -81,8 +81,9 @@ def browse_collection(request):
                 for row in reader:
                     if 'Category' in row and 'SVG Icon URL' in row:
                         category_icons[row['Category']] = row['SVG Icon URL']
-    except Exception:
+    except Exception as e:
         pass
+    
 
     search_query = request.GET.get('search', '')
     category_filter = request.GET.get('category', 'all')
@@ -136,7 +137,10 @@ def browse_collection(request):
         ).first()
 
         category_name = book_data['genero'] or 'Outros'
-        icon_url = category_icons.get(category_name, 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png')
+        
+        # Default icon - let JavaScript handle the actual icon lookup
+        icon_url = 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png'
+        
 
         processed_book = {
             'id': representative_book.id_livro if representative_book else None,
@@ -198,12 +202,14 @@ def browse_collection(request):
 
     categories = sorted(unique_categories.values(), key=str.lower)
 
+    
     context = {
         'books': books_page,
         'search_query': search_query,
         'category_filter': category_filter,
         'categories': categories,
         'category_icons': category_icons,
+        'category_icons_json': json.dumps(category_icons),
         'total_books': total_unique_books,
         'total_exemplars': total_exemplars,
         'available_exemplars': available_exemplars
@@ -310,13 +316,11 @@ def add_book(request):
 
 @login_required
 def manage_loans(request):
-    print(f"DEBUG: manage_loans called by user: {request.user.username}, role: {request.user.role}")
     
     # Handle loan creation via modal (only for non-readers)
     loan_form = None
     selected_book_id = None
     if request.user.role != 'reader':
-        print("DEBUG: User is librarian/admin, creating loan form...")
         # Check for pre-selected book from URL parameters
         book_title = request.GET.get('book_title')
         book_author = request.GET.get('book_author')
@@ -340,9 +344,7 @@ def manage_loans(request):
             form_kwargs['preselected_title'] = book_title
             form_kwargs['preselected_author'] = book_author
         
-        print(f"DEBUG: Creating LoanForm with kwargs: {form_kwargs}")
         loan_form = LoanForm(**form_kwargs)
-        print("DEBUG: LoanForm created successfully")
         
         if request.method == 'POST':
             loan_form = LoanForm(request.POST)
@@ -354,19 +356,14 @@ def manage_loans(request):
                 messages.error(request, 'Por favor, corrija os erros no formulário.')
     
     # Filter loans based on user role
-    print("DEBUG: Loading loans...")
     if request.user.role == 'reader':
-        print("DEBUG: User is reader, loading their loans only")
         # Readers see only their own loans
         emprestimos = Emprestimo.objects.filter(
             id_usuario=str(request.user.id)
         ).order_by('-data_inicio')
     else:
-        print("DEBUG: User is librarian/admin, loading all loans")
         # Librarians and admins see all loans
         emprestimos = Emprestimo.objects.all().order_by('-data_inicio')
-    
-    print(f"DEBUG: Found {emprestimos.count()} loans")
     
     loans_data = []
     for emp in emprestimos:

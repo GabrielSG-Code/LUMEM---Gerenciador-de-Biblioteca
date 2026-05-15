@@ -1,5 +1,5 @@
 // Get Django user data - this will be populated by the template
-let allUsers = [];
+let allUsers = window.allUsers || [];
 
 let currentFilter = 'Todos';
 let currentSearch = '';
@@ -27,28 +27,41 @@ function renderTable() {
   const pageUsers = filteredUsers.slice(startIndex, endIndex);
 
   // Render table rows
-  tbody.innerHTML = pageUsers.map((u) => `
-    <tr>
-      <td>
-        <div class="user-cell">
-          <div class="avatar ${u.avatarClass}">${u.initials}</div>
-          <div>
-            <div class="user-name">${u.name}</div>
-            <div class="user-email">${u.email}</div>
+  if (pageUsers.length > 0) {
+    tbody.innerHTML = pageUsers.map((u) => `
+      <tr>
+        <td>
+          <div class="user-cell">
+            <div class="avatar ${u.avatarClass}">${u.initials}</div>
+            <div>
+              <div class="user-name">${u.name}</div>
+              <div class="user-email">${u.email}</div>
+            </div>
           </div>
-        </div>
-      </td>
-      <td><span class="badge ${u.badgeClass}">${u.role}</span></td>
-      <td>
-        <div class="status">
-          <span class="status-dot ${u.active ? 'active' : 'inactive'}"></span>
-          ${u.active ? 'Ativo' : 'Inativo'}
-        </div>
-      </td>
-      <td><span class="last-access">${u.lastAccess}</span></td>
-      <td><button class="btn-edit" onclick="openEdit(${allUsers.indexOf(u)})">Editar perfil</button></td>
-    </tr>
-  `).join('');
+        </td>
+        <td><span class="badge ${u.badgeClass}">${u.role}</span></td>
+        <td>
+          <div class="status">
+            <span class="status-dot ${u.active ? 'active' : 'inactive'}"></span>
+            ${u.active ? 'Ativo' : 'Inativo'}
+          </div>
+        </td>
+        <td><span class="last-access">${u.lastAccess}</span></td>
+        <td><button class="btn-edit" onclick="openEdit(${allUsers.indexOf(u)})">Editar perfil</button></td>
+      </tr>
+    `).join('');
+  } else {
+    // Show empty state
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 40px 20px;">
+          <div style="color: #6b7a99;">
+            ${allUsers.length === 0 ? 'Nenhum usuário encontrado' : 'Nenhum usuário corresponde aos critérios de busca'}
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
   // Render pagination
   renderPagination(totalPages);
@@ -58,25 +71,28 @@ function renderPagination(totalPages) {
   const pagination = document.querySelector('.pagination');
   let paginationHTML = '';
   
-  // Previous button
-  if (currentPage > 1) {
-    paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage - 1})">‹</button>`;
-  }
-  
-  // Page numbers
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === currentPage) {
-      paginationHTML += `<button class="page-btn active" onclick="goToPage(${i})">${i}</button>`;
-    } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
-      paginationHTML += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
-    } else if (i === currentPage - 2 || i === currentPage + 2) {
-      paginationHTML += `<span class="page-ellipsis">...</span>`;
+  // Only show pagination if there are multiple pages
+  if (totalPages > 1) {
+    // Previous button
+    if (currentPage > 1) {
+      paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage - 1})">‹</button>`;
     }
-  }
-  
-  // Next button
-  if (currentPage < totalPages) {
-    paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage + 1})">›</button>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === currentPage) {
+        paginationHTML += `<button class="page-btn active" onclick="goToPage(${i})">${i}</button>`;
+      } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
+        paginationHTML += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
+      } else if (i === currentPage - 2 || i === currentPage + 2) {
+        paginationHTML += `<span class="page-ellipsis">...</span>`;
+      }
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+      paginationHTML += `<button class="page-btn" onclick="goToPage(${currentPage + 1})">›</button>`;
+    }
   }
   
   pagination.innerHTML = paginationHTML;
@@ -189,15 +205,18 @@ window.onclick = function(event) {
 }
 
 function updateStatistics() {
-  const totalUsers = allUsers.length;
-  const adminCount = allUsers.filter(u => u.role === 'Administrador').length;
-  const librarianCount = allUsers.filter(u => u.role === 'Bibliotecário').length;
-  const readerCount = allUsers.filter(u => u.role === 'Leitor').length;
+  // Only update if we have users in JavaScript, otherwise keep Django template values
+  if (allUsers.length > 0) {
+    const totalUsers = allUsers.length;
+    const adminCount = allUsers.filter(u => u.role === 'Administrador').length;
+    const librarianCount = allUsers.filter(u => u.role === 'Bibliotecário').length;
+    const readerCount = allUsers.filter(u => u.role === 'Leitor').length;
 
-  document.getElementById('total-users').textContent = totalUsers;
-  document.getElementById('admin-count').textContent = adminCount;
-  document.getElementById('librarian-count').textContent = librarianCount;
-  document.getElementById('reader-count').textContent = readerCount;
+    document.getElementById('total-users').textContent = totalUsers;
+    document.getElementById('admin-count').textContent = adminCount;
+    document.getElementById('librarian-count').textContent = librarianCount;
+    document.getElementById('reader-count').textContent = readerCount;
+  }
 }
 
 // Initialize table on page load
