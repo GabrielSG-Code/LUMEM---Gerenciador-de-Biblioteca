@@ -150,14 +150,11 @@ class LoanForm(forms.ModelForm):
             
             self.fields['user'].queryset = User.objects.filter(id__in=eligible_users)
             
-            # Simple book queryset - available books only (with debug)
-            print("DEBUG: Getting book queryset...")
+            # Simple book queryset - available books only
             all_books = Livros.objects.all()
-            print(f"DEBUG: Total books in database: {all_books.count()}")
             
             # Check what status values exist
             statuses = Livros.objects.values_list('status_livro', flat=True).distinct()
-            print(f"DEBUG: All status values: {list(statuses)}")
             
             # Try multiple status variations
             available_books = Livros.objects.filter(
@@ -168,11 +165,9 @@ class LoanForm(forms.ModelForm):
                 Q(status_livro__iexact='available') |
                 Q(status_livro__iexact='Available')
             )
-            print(f"DEBUG: Available books found: {available_books.count()}")
             
             # If no books found with status filter, show first 5 books as fallback
             if available_books.count() == 0:
-                print("DEBUG: No available books found, using all books as fallback")
                 available_books = Livros.objects.all()[:10]  # Limit to 10 for testing
             
             self.fields['book'].queryset = available_books
@@ -190,14 +185,10 @@ class LoanForm(forms.ModelForm):
                     
                     if available_book:
                         self.fields['book'].initial = available_book
-                        print(f"DEBUG: Pre-selected book: {available_book.titulo} (ID: {available_book.id_livro})")
                 except Exception as e:
-                    print(f"DEBUG: Could not pre-select book: {e}")
+                    pass
             
         except Exception as e:
-            print(f"Error in LoanForm __init__: {e}")
-            import traceback
-            print(traceback.format_exc())
             # Fallback to basic querysets if there's an error
             self.fields['user'].queryset = User.objects.filter(role='reader')
             self.fields['book'].queryset = Livros.objects.all()[:10]  # Show first 10 books as fallback
@@ -208,7 +199,6 @@ class LoanForm(forms.ModelForm):
         
         # Get the selected book object (now it's a ModelChoiceField)
         book = self.cleaned_data['book']
-        print(f"DEBUG: Selected book: {book.titulo} (ID: {book.id_livro}), current status: {book.status_livro}")
         
         emprestimo.id_livro = str(book.id_livro)
         
@@ -218,15 +208,11 @@ class LoanForm(forms.ModelForm):
         
         emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"
         
-        print(f"DEBUG: Creating loan - User: {emprestimo.id_usuario}, Book: {emprestimo.id_livro}, Start: {emprestimo.data_inicio}, Due: {emprestimo.data_entrega}")
-        
         if commit:
             emprestimo.save()
-            print(f"DEBUG: Loan saved with ID: {emprestimo.id}")
             
             # Update book status
             book.status_livro = 'Emprestado'
             book.save()
-            print(f"DEBUG: Updated book status to: {book.status_livro}")
         
         return emprestimo
