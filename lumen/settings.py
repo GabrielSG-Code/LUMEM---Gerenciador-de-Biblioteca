@@ -25,7 +25,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-DEBUG = os.getenv('DEBUG') == 'True'
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ["lumen-a5cs.onrender.com", "lumen-homol.onrender.com", "127.0.0.1"]
 
