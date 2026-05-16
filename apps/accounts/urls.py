@@ -13,4 +13,6 @@ urlpatterns = [
     path('loans/', views.manage_loans, name='manage_loans'),
     path('loans/return/<int:loan_id>/', views.return_book, name='return_book'),
     path('profile/', views.profile, name='profile'),
+    path('autocomplete/users/', views.autocomplete_users, name='autocomplete_users'),
+    path('autocomplete/books/', views.autocomplete_books, name='autocomplete_books'),
 ]

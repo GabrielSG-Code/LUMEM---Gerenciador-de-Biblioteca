@@ -39,6 +39,80 @@
   margin-bottom: 28px;
 }
 
+/* ── Stats Bar ── */
+.lumen-browse .stats {
+  max-width: 1100px;
+  margin: 0 auto 32px;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.lumen-browse .stat-card {
+  background: #ffffff !important;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #e8ecf0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lumen-browse .stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.lumen-browse .stat-label {
+  font-size: 0.85rem !important;
+  color: var(--muted) !important;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.lumen-browse .stat-value {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+  line-height: 1;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lumen-browse .stat-value-positive {
+  color: var(--success) !important;
+}
+
+.lumen-browse .stat-value-negative {
+  color: var(--accent) !important;
+}
+
+@media (max-width: 768px) {
+  .lumen-browse .stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+  
+  .lumen-browse .stat-card {
+    padding: 16px !important;
+  }
+  
+  .lumen-browse .stat-value {
+    font-size: 1.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .lumen-browse .stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ── Search and filters ── */
 .browse-controls {
   max-width: 1100px;
@@ -626,4 +700,46 @@
   .form-actions {
     flex-direction: column;
   }
+}
+
+/* ── Messages/Alerts Styling ── */
+.alert {
+  border-radius: 8px;
+  border: none;
+  padding: 16px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.alert-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+  background-color: #cce8ff;
+  color: #0c5460;
+  border-left: 4px solid #17a2b8;
+}
+
+.btn-close {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.btn-close:hover {
+  opacity: 0.8;
 }
