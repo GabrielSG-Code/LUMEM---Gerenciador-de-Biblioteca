@@ -63,13 +63,116 @@ class EmailOrUsernameLoginForm(AuthenticationForm):
 
 
 class AddBookForm(forms.Form):
-    title = forms.CharField(max_length=255)
-    author = forms.CharField(max_length=255)
-    description = forms.CharField(required=False, widget=forms.Textarea)
-    release_year = forms.IntegerField(required=False, min_value=1000, max_value=2100)
-    category = forms.CharField(max_length=255)
-    publisher = forms.CharField(max_length=255, required=False)
-    exemplary = forms.IntegerField(min_value=1)
+    title = forms.CharField(max_length=255, label="Título")
+    author = forms.CharField(max_length=255, label="Autor")
+    description = forms.CharField(required=False, widget=forms.Textarea, label="Descrição")
+    release_year = forms.IntegerField(required=False, min_value=1000, max_value=2100, label="Ano de Lançamento")
+    category = forms.CharField(max_length=255, label="Categoria")
+    publisher = forms.CharField(max_length=255, required=False, label="Editora")
+    exemplary = forms.IntegerField(min_value=1, label="Número de Exemplares")
+    force_duplicate = forms.BooleanField(required=False, widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        title = cleaned_data.get('title')
+        author = cleaned_data.get('author')
+        release_year = cleaned_data.get('release_year')
+        force_duplicate = cleaned_data.get('force_duplicate', False)
+        
+        
+        if title and author and not force_duplicate:
+            # Normalize title and author for comparison
+            title_normalized = title.strip().lower()
+            author_normalized = author.strip().lower()
+            
+            
+            # Check for exact matches including year (if year is provided)
+            exact_matches_query = Livros.objects.filter(
+                titulo__iexact=title.strip(),
+                autor__iexact=author.strip()
+            )
+            
+            # If year is provided, check for exact match with same year
+            if release_year:
+                exact_matches_with_year = exact_matches_query.filter(ano=release_year)
+                if exact_matches_with_year.exists():
+                    existing_count = exact_matches_with_year.count()
+                    existing_book = exact_matches_with_year.first()
+                    
+                    
+                    # Create detailed error message for same edition
+                    error_msg = (
+                        f'LIVRO DUPLICADO: "{title}" de "{author}" ({release_year}) já existe no sistema '
+                        f'com {existing_count} exemplar(es) cadastrado(s).'
+                    )
+                    
+                    # Add existing book details
+                    details = []
+                    if existing_book.editora:
+                        details.append(f'Editora: {existing_book.editora}')
+                    if existing_book.genero:
+                        details.append(f'Categoria: {existing_book.genero}')
+                    
+                    if details:
+                        error_msg += f' [{", ".join(details)}]'
+                    
+                    error_msg += ' Para adicionar mais exemplares desta mesma edição, use a funcionalidade de gestão de exemplares.'
+                    
+                    raise forms.ValidationError(error_msg)
+                
+                # Check if there are other editions (same title/author, different year)
+                other_editions = exact_matches_query.exclude(ano=release_year).filter(ano__isnull=False)
+                if other_editions.exists():
+                    editions_list = list(other_editions.values_list('ano', flat=True).distinct())
+                    
+                    # This is allowed - just show info message about other editions
+                    info_msg = (
+                        f'INFORMAÇÃO: Já existem outras edições de "{title}" de "{author}" '
+                        f'nos anos: {", ".join(map(str, sorted(editions_list)))}. '
+                        f'A nova edição de {release_year} será adicionada como um livro separado.'
+                    )
+                    # We don't raise an error here - just log the info
+                    
+            else:
+                # No year provided - check if any edition exists
+                if exact_matches_query.exists():
+                    existing_book = exact_matches_query.first()
+                    existing_years = list(exact_matches_query.filter(ano__isnull=False).values_list('ano', flat=True).distinct())
+                    
+                    warning_msg = (
+                        f'ATENÇÃO: "{title}" de "{author}" já existe no sistema'
+                    )
+                    
+                    if existing_years:
+                        warning_msg += f' com edições dos anos: {", ".join(map(str, sorted(existing_years)))}'
+                    
+                    warning_msg += (
+                        '. Como você não especificou o ano de lançamento, '
+                        'verifique se não está duplicando uma edição existente. '
+                        'Recomenda-se informar o ano para diferenciar edições.'
+                    )
+                    
+                    raise forms.ValidationError(warning_msg)
+                
+            # Also check for very similar titles (potential typos) - only if no year conflicts
+            similar_books = Livros.objects.filter(
+                autor__iexact=author.strip()
+            ).filter(
+                titulo__icontains=title.strip()[:10] if len(title.strip()) > 10 else title.strip()
+            ).exclude(
+                titulo__iexact=title.strip()  # Exclude exact title matches already checked above
+            )
+            
+            
+            if similar_books.exists():
+                similar_book = similar_books.first()
+                warning_msg = (
+                    f'POSSÍVEL DUPLICATA: Encontrado livro similar "{similar_book.titulo}" '
+                    f'do mesmo autor "{author}". Verifique se não é o mesmo livro com grafia ligeiramente diferente.'
+                )
+                raise forms.ValidationError(warning_msg)
+        
+        return cleaned_data
 
     def save_books(self):
         title = self.cleaned_data['title']
@@ -97,15 +200,35 @@ class AddBookForm(forms.Form):
 
 
 class LoanForm(forms.ModelForm):
+    user_search = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control autocomplete-input',
+            'placeholder': 'Digite o nome ou email do usuário...',
+            'data-autocomplete-url': '/accounts/autocomplete/users/',
+            'data-target': 'user'
+        }),
+        label="Usuário"
+    )
     user = forms.ModelChoiceField(
         queryset=User.objects.none(),
-        empty_label="Selecione um usuário",
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.HiddenInput(),
+        required=False
+    )
+    book_search = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control autocomplete-input',
+            'placeholder': 'Digite o título ou autor do livro...',
+            'data-autocomplete-url': '/accounts/autocomplete/books/',
+            'data-target': 'book'
+        }),
+        label="Livro"
     )
     book = forms.ModelChoiceField(
         queryset=Livros.objects.filter(status_livro='Disponível'),
-        empty_label="Selecione um livro",
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.HiddenInput(),
+        required=False
     )
     reserva = forms.BooleanField(
         required=False,
@@ -192,6 +315,19 @@ class LoanForm(forms.ModelForm):
             # Fallback to basic querysets if there's an error
             self.fields['user'].queryset = User.objects.filter(role='reader')
             self.fields['book'].queryset = Livros.objects.all()[:10]  # Show first 10 books as fallback
+
+    def clean(self):
+        cleaned_data = super().clean()
+        user = cleaned_data.get('user')
+        book = cleaned_data.get('book')
+        
+        if not user:
+            raise forms.ValidationError('Por favor, selecione um usuário válido.')
+        
+        if not book:
+            raise forms.ValidationError('Por favor, selecione um livro válido.')
+        
+        return cleaned_data
 
     def save(self, commit=True):
         emprestimo = super().save(commit=False)

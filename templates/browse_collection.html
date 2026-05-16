@@ -20,6 +20,40 @@
     <p>Descubra nossa coleção completa de livros disponíveis</p>
   </div>
 
+  <!-- Messages Display -->
+  {% if messages %}
+    <div class="messages-container" style="max-width: 1100px; margin: 0 auto 24px;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="margin-bottom: 12px;">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Stats Bar -->
+  {% if user.role != 'reader' %}
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-label">Total de livros</span>
+      <span class="stat-value">{{ stats.total_books|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Disponíveis</span>
+      <span class="stat-value stat-value-positive">{{ stats.available|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Emprestados</span>
+      <span class="stat-value">{{ stats.borrowed|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Atrasados</span>
+      <span class="stat-value stat-value-negative">{{ stats.overdue|default:"0" }}</span>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Search and filters -->
   <div class="browse-controls">
     <form method="GET" style="display: contents;">
@@ -36,12 +70,14 @@
       </div>
     </form>
     <div style="display: flex; gap: 12px;">
+      {% if user.role != 'reader' %}
       <button class="add-book-btn" onclick="openAddBookModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
         Adicionar Livro
       </button>
+      {% endif %}
     </div>
   </div>
 
@@ -75,7 +111,7 @@
     {% empty %}
       <div class="no-results">
         <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" width="64">
-        <p>Nenhum livro encontrado no acervo.</p>
+        <p>Nenhum livro encontrado para a busca realizada.</p>
       </div>
     {% endfor %}
     

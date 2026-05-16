@@ -123,6 +123,28 @@ def browse_collection(request):
     total_exemplars = livros_query.count()
     available_exemplars = livros_query.filter(status_livro__iexact='disponível').count()
 
+    # Calculate stats for the stats bar
+    from django.utils import timezone
+    borrowed_exemplars = livros_query.exclude(status_livro__iexact='disponível').count()
+    
+    # Calculate overdue loans
+    overdue_count = 0
+    try:
+        overdue_loans = Emprestimo.objects.filter(
+            data_entrega__lt=timezone.now().date(),
+            data_fim__isnull=True
+        )
+        overdue_count = overdue_loans.count()
+    except:
+        overdue_count = 0
+
+    stats = {
+        'total_books': total_unique_books,
+        'available': available_exemplars,
+        'borrowed': borrowed_exemplars,
+        'overdue': overdue_count
+    }
+
     books_per_page = 12
     start_index = (page_number - 1) * books_per_page
     end_index = start_index + books_per_page
@@ -138,8 +160,21 @@ def browse_collection(request):
 
         category_name = book_data['genero'] or 'Outros'
         
-        # Default icon - let JavaScript handle the actual icon lookup
-        icon_url = 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png'
+        # Get the appropriate icon for the category with better matching
+        icon_url = None
+        # Try exact match first
+        if category_name in category_icons:
+            icon_url = category_icons[category_name]
+        else:
+            # Try case-insensitive match
+            for csv_cat, csv_icon in category_icons.items():
+                if csv_cat.lower() == category_name.lower():
+                    icon_url = csv_icon
+                    break
+        
+        # Fallback to default icon if no match found
+        if not icon_url:
+            icon_url = 'https://cdn-icons-png.flaticon.com/512/1146/1146315.png'
         
 
         processed_book = {
@@ -190,17 +225,30 @@ def browse_collection(request):
 
     books_page = MockPaginator(books_list, page_number, total_unique_books, total_pages)
 
-    categories_raw = Livros.objects.exclude(genero__isnull=True).exclude(genero='').values_list('genero', flat=True)
+    # Get unique categories with proper deduplication
+    categories_raw = Livros.objects.exclude(genero__isnull=True).exclude(genero='').values_list('genero', flat=True).distinct()
 
+
+    import unicodedata
     unique_categories = {}
     for category in categories_raw:
         if category and category.strip():
-            cleaned = category.strip()
-            key = cleaned.lower()
-            if key not in unique_categories:
-                unique_categories[key] = cleaned
+            # Normalize to title case for consistency
+            cleaned = category.strip().title()
+            # Remove accents for comparison key (ficção -> ficcao)
+            normalized_key = unicodedata.normalize('NFD', cleaned.lower())
+            normalized_key = ''.join(c for c in normalized_key if unicodedata.category(c) != 'Mn')
+            
+            # Keep the version with accents if it exists, otherwise use the current one
+            if normalized_key not in unique_categories:
+                unique_categories[normalized_key] = cleaned
+            else:
+                # Prefer the version with accents (ç over c)
+                existing = unique_categories[normalized_key]
+                if 'ç' in cleaned.lower() and 'c' in existing.lower():
+                    unique_categories[normalized_key] = cleaned
 
-    categories = sorted(unique_categories.values(), key=str.lower)
+    categories = sorted(list(unique_categories.values()), key=str.lower)
 
     
     context = {
@@ -212,7 +260,8 @@ def browse_collection(request):
         'category_icons_json': json.dumps(category_icons),
         'total_books': total_unique_books,
         'total_exemplars': total_exemplars,
-        'available_exemplars': available_exemplars
+        'available_exemplars': available_exemplars,
+        'stats': stats
     }
 
     return render(request, 'browse_collection.html', context)
@@ -293,25 +342,75 @@ def update_user(request, user_id):
 
 @login_required
 def add_book(request):
+    if request.user.role == 'reader':
+        messages.error(request, 'Acesso negado. Apenas administradores e bibliotecários podem adicionar livros.')
+        return redirect('browse_collection')
+        
     if request.method != 'POST':
-        return HttpResponse('Método não permitido')
+        messages.error(request, 'Método não permitido')
+        return redirect('browse_collection')
 
     form = AddBookForm(request.POST)
+    
 
     if not form.is_valid():
-        return HttpResponse(f'ERROS DO FORM: {form.errors}', status=400)
+        # Extract and format error messages for better display
+        error_messages = []
+        for field, errors in form.errors.items():
+            if field == '__all__':
+                # Non-field errors (like our duplicate book check)
+                for error in errors:
+                    error_messages.append(error)
+            else:
+                # Field-specific errors
+                field_name = form[field].label if hasattr(form[field], 'label') else field
+                for error in errors:
+                    error_messages.append(f'{field_name}: {error}')
+        
+        for error_msg in error_messages:
+            messages.error(request, error_msg)
+        
+        return redirect('browse_collection')
 
     try:
-        livros_criados = form.save_books()
-        messages.success(
-            request,
-            f'{len(livros_criados)} exemplar(es) do livro "{form.cleaned_data["title"]}" adicionado(s) com sucesso.'
+        # Check if this is a new edition of an existing book
+        title = form.cleaned_data['title']
+        author = form.cleaned_data['author']
+        release_year = form.cleaned_data.get('release_year')
+        
+        existing_editions = Livros.objects.filter(
+            titulo__iexact=title.strip(),
+            autor__iexact=author.strip()
         )
+        
+        if release_year and existing_editions.exists():
+            other_years = list(existing_editions.filter(ano__isnull=False).exclude(ano=release_year).values_list('ano', flat=True).distinct())
+            if other_years:
+                is_new_edition = True
+            else:
+                is_new_edition = False
+        else:
+            is_new_edition = False
+        
+        livros_criados = form.save_books()
+        
+        # Create appropriate success message
+        if is_new_edition:
+            messages.success(
+                request,
+                f'{len(livros_criados)} exemplar(es) da nova edição ({release_year}) de "{title}" por "{author}" '
+                f'adicionado(s) com sucesso. Outras edições existem nos anos: {", ".join(map(str, sorted(other_years)))}.'
+            )
+        else:
+            messages.success(
+                request,
+                f'{len(livros_criados)} exemplar(es) do livro "{title}" adicionado(s) com sucesso.'
+            )
+        
         return redirect('browse_collection')
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return HttpResponse(f'ERRO AO SALVAR LIVROS: {repr(e)}', status=500)
+        messages.error(request, f'Erro ao salvar livros: {str(e)}')
+        return redirect('browse_collection')
 
 
 @login_required
@@ -480,3 +579,84 @@ def profile(request):
     }
     
     return render(request, 'accounts/profile.html', context)
+
+
+@login_required
+def autocomplete_users(request):
+    if request.user.role == 'reader':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Get eligible users (readers with < 2 active loans and no overdue loans)
+    from django.utils import timezone
+    today = timezone.now().date()
+    
+    # Search users by username or email
+    users = User.objects.filter(
+        role='reader'
+    ).filter(
+        Q(username__icontains=query) | Q(email__icontains=query)
+    )[:10]
+    
+    eligible_users = []
+    for user in users:
+        # Count active loans
+        active_loans = Emprestimo.objects.filter(
+            id_usuario=str(user.id),
+            data_fim__isnull=True
+        ).count()
+        
+        # Check for overdue loans
+        overdue_loans = Emprestimo.objects.filter(
+            id_usuario=str(user.id),
+            data_entrega__lt=today,
+            data_fim__isnull=True
+        ).count()
+        
+        # User is eligible if < 2 active loans and no overdue loans
+        if active_loans < 2 and overdue_loans == 0:
+            eligible_users.append({
+                'id': user.id,
+                'text': f"{user.username} ({user.email})",
+                'username': user.username,
+                'email': user.email
+            })
+    
+    return JsonResponse({'results': eligible_users})
+
+
+@login_required  
+def autocomplete_books(request):
+    if request.user.role == 'reader':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Search available books by title or author
+    books = Livros.objects.filter(
+        Q(status_livro__iexact='disponível') |
+        Q(status_livro__iexact='Disponível') |
+        Q(status_livro__icontains='disponível') |
+        Q(status_livro__icontains='Disponível') |
+        Q(status_livro__iexact='available') |
+        Q(status_livro__iexact='Available')
+    ).filter(
+        Q(titulo__icontains=query) | Q(autor__icontains=query)
+    ).distinct()[:10]
+    
+    results = []
+    for book in books:
+        results.append({
+            'id': book.id_livro,
+            'text': f"{book.titulo} - {book.autor}",
+            'title': book.titulo,
+            'author': book.autor,
+            'status': book.status_livro
+        })
+    
+    return JsonResponse({'results': results})

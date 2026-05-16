@@ -3,27 +3,68 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     let searchTimeout;
 
-    // Search functionality - submit form on input with debounce
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const form = this.closest('form');
-            if (form) {
-                form.submit();
-            }
-        }, 500); // 500ms delay to avoid too many requests
-    });
-
-    // Submit form on Enter key
-    searchInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    if (searchInput) {
+        // Search functionality - submit form on input with debounce
+        searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
-            const form = this.closest('form');
-            if (form) {
-                form.submit();
+            searchTimeout = setTimeout(() => {
+                const form = this.closest('form');
+                if (form) {
+                    form.submit();
+                }
+            }, 500); // 500ms delay to avoid too many requests
+        });
+
+        // Submit form on Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                const form = this.closest('form');
+                if (form) {
+                    form.submit();
+                }
             }
-        }
-    });
+        });
+    }
+
+    // Setup book form event listeners
+    const bookForm = document.querySelector('.book-form');
+    if (bookForm) {
+        // Form validation listeners
+        const inputs = bookForm.querySelectorAll('input[required], select[required]');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(window.validationTimeout);
+                window.validationTimeout = setTimeout(() => {
+                    updateSubmitButton('validating');
+                    setTimeout(() => validateForm(), 300);
+                }, 200);
+            });
+        });
+        
+        // Form submission handler
+        bookForm.addEventListener('submit', function(e) {
+            console.log('Form submission started, formState:', formState);
+            
+            if (formState === 'submitting') {
+                console.log('Form already submitting, preventing duplicate submission');
+                e.preventDefault();
+                return;
+            }
+            
+            // Validate form before submission
+            if (!validateForm()) {
+                console.log('Form validation failed');
+                e.preventDefault();
+                updateSubmitButton('error', 'Preencha todos os campos obrigatórios');
+                return;
+            }
+            
+            console.log('Form is valid, proceeding with submission');
+            updateSubmitButton('submitting');
+            // Allow form to submit normally - don't prevent default
+        });
+    }
 });
 
 // Book Detail Modal Functions
@@ -177,37 +218,7 @@ function validateForm() {
 function openAddBookModal() {
     document.getElementById('addBookModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-    
-    // Setup form validation listeners
-    const form = document.querySelector('.book-form');
-    if (form) {
-        const inputs = form.querySelectorAll('input[required], select[required]');
-        inputs.forEach(input => {
-            input.addEventListener('input', () => {
-                clearTimeout(window.validationTimeout);
-                window.validationTimeout = setTimeout(() => {
-                    updateSubmitButton('validating');
-                    setTimeout(() => validateForm(), 300);
-                }, 200);
-            });
-        });
-        
-        // Form submission handler
-        form.addEventListener('submit', function(e) {
-            if (formState === 'submitting') {
-                e.preventDefault();
-                return;
-            }
-            
-            updateSubmitButton('submitting');
-            
-            // Simulate API delay for visual feedback
-            setTimeout(() => {
-                // The form will actually submit normally
-                // This is just for visual feedback during submission
-            }, 500);
-        });
-    }
+    resetSubmitButton();
 }
 
 function closeAddBookModal() {

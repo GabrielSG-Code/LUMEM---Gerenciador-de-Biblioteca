@@ -108,17 +108,31 @@
           
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="{{ loan_form.user.id_for_label }}" class="form-label">Usuário</label>
-              {{ loan_form.user }}
-              {% if loan_form.user.errors %}
-                <div class="text-danger mt-1">{{ loan_form.user.errors }}</div>
+              <label for="{{ loan_form.user_search.id_for_label }}" class="form-label">Usuário</label>
+              <div class="autocomplete-wrapper">
+                {{ loan_form.user_search }}
+                {{ loan_form.user }}
+                <div class="autocomplete-dropdown" id="user-dropdown"></div>
+              </div>
+              {% if loan_form.user.errors or loan_form.user_search.errors %}
+                <div class="text-danger mt-1">
+                  {{ loan_form.user.errors }}
+                  {{ loan_form.user_search.errors }}
+                </div>
               {% endif %}
             </div>
             <div class="col-md-6 mb-3">
-              <label for="{{ loan_form.book.id_for_label }}" class="form-label">Livro</label>
-              {{ loan_form.book }}
-              {% if loan_form.book.errors %}
-                <div class="text-danger mt-1">{{ loan_form.book.errors }}</div>
+              <label for="{{ loan_form.book_search.id_for_label }}" class="form-label">Livro</label>
+              <div class="autocomplete-wrapper">
+                {{ loan_form.book_search }}
+                {{ loan_form.book }}
+                <div class="autocomplete-dropdown" id="book-dropdown"></div>
+              </div>
+              {% if loan_form.book.errors or loan_form.book_search.errors %}
+                <div class="text-danger mt-1">
+                  {{ loan_form.book.errors }}
+                  {{ loan_form.book_search.errors }}
+                </div>
               {% endif %}
             </div>
           </div>
@@ -164,5 +178,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/autocomplete.js' %}"></script>
 <script src="{% static 'js/manage_loans.js' %}"></script>
 {% endblock %}
