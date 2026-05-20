@@ -1,10 +1,11 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q, Count
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from .models import Livros, Emprestimo
 
@@ -352,3 +353,97 @@ class LoanForm(forms.ModelForm):
             book.save()
         
         return emprestimo
+
+
+class ChangePasswordForm(PasswordChangeForm):
+    """Custom password change form with Bootstrap styling"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Set Portuguese labels
+        self.fields['old_password'].label = 'Senha Atual'
+        self.fields['new_password1'].label = 'Nova Senha'
+        self.fields['new_password2'].label = 'Confirmar Nova Senha'
+        
+        self.fields['old_password'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Senha atual'
+        })
+        self.fields['new_password1'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Nova senha'
+        })
+        self.fields['new_password2'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Confirmar nova senha'
+        })
+
+
+class ChangeEmailForm(forms.Form):
+    """Form for changing user email"""
+    new_email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Novo email'
+        }),
+        label="Novo Email"
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Senha atual para confirmar'
+        }),
+        label="Senha Atual"
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_new_email(self):
+        new_email = self.cleaned_data.get('new_email')
+        if User.objects.filter(email=new_email).exclude(id=self.user.id).exists():
+            raise ValidationError('Este email já está em uso por outro usuário.')
+        return new_email
+    
+    def clean_password(self):
+        password = self.cleaned_data.get('password')
+        if not self.user.check_password(password):
+            raise ValidationError('Senha atual incorreta.')
+        return password
+
+
+class ChangeUsernameForm(forms.Form):
+    """Form for changing username"""
+    new_username = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Novo nome de usuário'
+        }),
+        label="Novo Nome de Usuário"
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Senha atual para confirmar'
+        }),
+        label="Senha Atual"
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_new_username(self):
+        new_username = self.cleaned_data.get('new_username')
+        if User.objects.filter(username=new_username).exclude(id=self.user.id).exists():
+            raise ValidationError('Este nome de usuário já está em uso.')
+        return new_username
+    
+    def clean_password(self):
+        password = self.cleaned_data.get('password')
+        if not self.user.check_password(password):
+            raise ValidationError('Senha atual incorreta.')
+        return password

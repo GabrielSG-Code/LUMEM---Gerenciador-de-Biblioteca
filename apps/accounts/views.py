@@ -10,7 +10,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
 import json
 
-from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm
+from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm
 from .models import Livros, User, Emprestimo
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -37,7 +37,7 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('browse_collection')
+            return redirect('home')
         else:
             messages.error(request, 'Usuário ou senha inválidos.')
     else:
@@ -47,7 +47,7 @@ def login_view(request):
 
 def logout_view(request):
     logout(request)
-    return redirect('login')
+    return redirect('home')
 
 
 @login_required
@@ -509,6 +509,11 @@ def manage_loans(request):
 def return_book(request, loan_id):
     emprestimo = get_object_or_404(Emprestimo, id=loan_id)
 
+    # Check if reader is trying to return someone else's book
+    if request.user.role == 'reader' and str(emprestimo.id_usuario) != str(request.user.id):
+        messages.error(request, 'Você só pode devolver seus próprios livros.')
+        return redirect('manage_loans')
+
     if emprestimo.data_fim:
         messages.warning(request, 'Este livro já foi devolvido.')
         return redirect('manage_loans')
@@ -529,53 +534,104 @@ def return_book(request, loan_id):
 
 @login_required
 def profile(request):
-    """User profile view showing user information and account details"""
-    # Get user's loan statistics
-    user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
-    active_loans = user_loans.filter(data_fim__isnull=True).count()
-    total_loans = user_loans.count()
-    overdue_loans = user_loans.filter(
-        data_fim__isnull=True,
-        data_entrega__lt=timezone.now().date()
-    ).count()
+    """User profile view showing user information and account details with edit forms"""
     
-    # Get recent loan history (last 5 loans)
+    # Handle form submissions
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        
+        if form_type == 'password':
+            password_form = ChangePasswordForm(request.user, request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                messages.success(request, 'Senha alterada com sucesso!')
+                return redirect('profile')
+            else:
+                for error in password_form.errors.values():
+                    messages.error(request, error)
+                    
+        elif form_type == 'email':
+            email_form = ChangeEmailForm(request.user, request.POST)
+            if email_form.is_valid():
+                request.user.email = email_form.cleaned_data['new_email']
+                request.user.save()
+                messages.success(request, 'Email alterado com sucesso!')
+                return redirect('profile')
+            else:
+                for error in email_form.errors.values():
+                    messages.error(request, error)
+                    
+        elif form_type == 'username':
+            username_form = ChangeUsernameForm(request.user, request.POST)
+            if username_form.is_valid():
+                request.user.username = username_form.cleaned_data['new_username']
+                request.user.save()
+                messages.success(request, 'Nome de usuário alterado com sucesso!')
+                return redirect('profile')
+            else:
+                for error in username_form.errors.values():
+                    messages.error(request, error)
+    
+    
+    # Initialize forms for display
+    password_form = ChangePasswordForm(request.user)
+    email_form = ChangeEmailForm(request.user)
+    username_form = ChangeUsernameForm(request.user)
+    
+    # Get user's loan statistics (only for readers)
+    stats = {}
     recent_loans = []
-    for emp in user_loans.order_by('-data_inicio')[:5]:
-        try:
-            if emp.id_livro:
-                try:
-                    book = Livros.objects.get(id_livro=emp.id_livro)
-                    loan_data = {
-                        'book_title': book.titulo,
-                        'start_date': emp.data_inicio,
-                        'due_date': emp.data_entrega,
-                        'return_date': emp.data_fim,
-                        'is_overdue': emp.data_entrega < timezone.now().date() if emp.data_entrega and not emp.data_fim else False,
-                        'status': 'returned' if emp.data_fim else ('overdue' if emp.data_entrega < timezone.now().date() else 'active')
-                    }
-                    recent_loans.append(loan_data)
-                except Livros.DoesNotExist:
-                    loan_data = {
-                        'book_title': f'Livro removido (ID: {emp.id_livro})',
-                        'start_date': emp.data_inicio,
-                        'due_date': emp.data_entrega,
-                        'return_date': emp.data_fim,
-                        'is_overdue': False,
-                        'status': 'returned' if emp.data_fim else 'active'
-                    }
-                    recent_loans.append(loan_data)
-        except Exception:
-            continue
     
-    context = {
-        'user': request.user,
-        'stats': {
+    if request.user.role == 'reader':
+        user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
+        active_loans = user_loans.filter(data_fim__isnull=True).count()
+        total_loans = user_loans.count()
+        overdue_loans = user_loans.filter(
+            data_fim__isnull=True,
+            data_entrega__lt=timezone.now().date()
+        ).count()
+        
+        stats = {
             'active_loans': active_loans,
             'total_loans': total_loans,
             'overdue_loans': overdue_loans,
-        },
+        }
+        
+        # Get recent loan history (last 5 loans)
+        for emp in user_loans.order_by('-data_inicio')[:5]:
+            try:
+                if emp.id_livro:
+                    try:
+                        book = Livros.objects.get(id_livro=emp.id_livro)
+                        loan_data = {
+                            'book_title': book.titulo,
+                            'start_date': emp.data_inicio,
+                            'due_date': emp.data_entrega,
+                            'return_date': emp.data_fim,
+                            'is_overdue': emp.data_entrega < timezone.now().date() if emp.data_entrega and not emp.data_fim else False,
+                            'status': 'returned' if emp.data_fim else ('overdue' if emp.data_entrega < timezone.now().date() else 'active')
+                        }
+                        recent_loans.append(loan_data)
+                    except Livros.DoesNotExist:
+                        loan_data = {
+                            'book_title': f'Livro removido (ID: {emp.id_livro})',
+                            'start_date': emp.data_inicio,
+                            'due_date': emp.data_entrega,
+                            'return_date': emp.data_fim,
+                            'is_overdue': False,
+                            'status': 'returned' if emp.data_fim else 'active'
+                        }
+                        recent_loans.append(loan_data)
+            except Exception:
+                continue
+    
+    context = {
+        'user': request.user,
+        'stats': stats,
         'recent_loans': recent_loans,
+        'password_form': password_form,
+        'email_form': email_form,
+        'username_form': username_form,
     }
     
     return render(request, 'accounts/profile.html', context)
