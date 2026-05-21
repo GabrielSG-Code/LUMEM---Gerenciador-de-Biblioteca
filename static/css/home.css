@@ -118,34 +118,79 @@
   gap: 28px;
 }
 
-/* ── Book card ── */
-.book-cover {
+/* ── 3D Book Model ── */
+.book-container {
   width: 200px;
   height: 300px;
-  border-radius: 3px 10px 10px 3px;
-  box-shadow: var(--card-shadow);
+  perspective: 1000px;
+  position: relative;
+  cursor: default;
+}
+
+/* Book pages (static background) */
+.book-pages {
+  position: absolute;
+  width: 95%;
+  height: 96%;
+  top: 2%;
+  right: 2%;
+  background: #eee;
+  border-radius: 2px 6px 6px 2px;
+  box-shadow: 
+    inset -3px 0px 5px rgba(0,0,0,0.1),
+    3px 3px 8px rgba(0,0,0,0.1);
+  z-index: 1;
+  /* Simulates page edges */
+  background-image: linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.1) 95%),
+                    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 4px;
+}
+
+/* Book cover (rotates on hover) */
+.book-cover {
+  width: 100%;
+  height: 100%;
+  background: var(--cover-bg, #f5f0eb);
+  border-radius: 4px 10px 10px 4px;
   padding: 28px 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   text-align: center;
-  position: relative;
-  transition: transform 0.25s, box-shadow 0.25s;
-  cursor: default;
+  border: 1px solid rgba(0,0,0,0.08);
+  position: absolute;
+  z-index: 2;
+  opacity: 1;
+  
+  /* Fixed spine rotation axis at left border */
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.15);
 }
 
-.book-cover:hover {
-  transform: translateY(-6px) rotate(-1deg);
-  box-shadow: 0 18px 48px rgba(0,0,0,0.18);
+/* 3D semi-open effect on hover */
+.book-container:hover .book-cover {
+  transform: rotateY(-30deg);
+  box-shadow: -5px 10px 25px rgba(0,0,0,0.25);
 }
 
-/* Dobra da lombada */
+/* Spine shadowing for realism */
 .book-cover::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 12px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 0%, transparent 100%);
+  border-radius: 4px 0 0 4px;
+}
+
+/* Decorative line near spine (classic book style) */
+.book-cover::after {
   content: '';
   position: absolute;
   left: 14px; top: 0; bottom: 0;
   width: 1px;
-  background: rgba(0,0,0,0.07);
+  background: rgba(0,0,0,0.04);
 }
 
 /* Badge de prazo */
@@ -160,7 +205,8 @@
   padding: 4px 8px;
   border-radius: 20px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(192,57,43,0.35);
+  z-index: 3;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .due-badge.ok {
@@ -220,13 +266,24 @@
 }
 
 /* Paletas por categoria */
-.book-cover.investigacao { --cover-bg: #f3f4f6; background: var(--cover-bg); }
-.book-cover.romance      { --cover-bg: #fdf2f8; background: var(--cover-bg); }
-.book-cover.ficcao       { --cover-bg: #ecfeff; background: var(--cover-bg); }
-.book-cover.terror       { --cover-bg: #111827; background: var(--cover-bg); --text-color: #f3f4f6; }
-.book-cover.historico    { --cover-bg: #fefce8; background: var(--cover-bg); }
-.book-cover.drama        { --cover-bg: #f0f9ff; background: var(--cover-bg); }
-.book-cover.outros       { --cover-bg: #f5f0eb; background: var(--cover-bg); }
+.book-cover.investigacao { --cover-bg: #f3f4f6; background: var(--cover-bg) !important; }
+.book-cover.romance      { --cover-bg: #fdf2f8; background: var(--cover-bg) !important; }
+.book-cover.ficcao       { --cover-bg: #ecfeff; background: var(--cover-bg) !important; }
+.book-cover.terror       { --cover-bg: #111827; background: var(--cover-bg) !important; --text-color: #f3f4f6; }
+.book-cover.historico    { --cover-bg: #fefce8; background: var(--cover-bg) !important; }
+.book-cover.drama        { --cover-bg: #f0f9ff; background: var(--cover-bg) !important; }
+.book-cover.outros       { --cover-bg: #f5f0eb; background: var(--cover-bg) !important; }
+.book-cover.literatura-estrangeira { --cover-bg: #e0f2fe; --accent-color: #0369a1; background: var(--cover-bg) !important; }
+.book-cover.fantasia { --cover-bg: #f5f3ff; --accent-color: #6d28d9; background: var(--cover-bg) !important; }
+.book-cover.autoajuda { --cover-bg: #ecfdf5; --accent-color: #047857; background: var(--cover-bg) !important; }
+.book-cover.infantojuvenil { --cover-bg: #fff1f2; --accent-color: #be123c; background: var(--cover-bg) !important; }
+.book-cover.biografia { --cover-bg: #fafaf9; --accent-color: #44403c; background: var(--cover-bg) !important; }
+.book-cover.administracao { --cover-bg: #f1f5f9; --accent-color: #334155; background: var(--cover-bg) !important; }
+.book-cover.artes { --cover-bg: #fff7ed; --accent-color: #c2410c; background: var(--cover-bg) !important; }
+.book-cover.economia { --cover-bg: #f0fdf4; --accent-color: #15803d; background: var(--cover-bg) !important; }
+.book-cover.hq { --cover-bg: #fef2f2; --accent-color: #dc2626; background: var(--cover-bg) !important; }
+.book-cover.informatica-tecnologia { --cover-bg: #0f172a; --accent-color: #38bdf8; --text-color: #f8fafc; background: var(--cover-bg) !important; }
+.book-cover.lgbt { --cover-bg: #fdf2f8; --accent-color: #db2777; background: var(--cover-bg) !important; }
 
 .terror .book-illustration img { filter: brightness(0) invert(1); }
 
@@ -238,3 +295,129 @@
   color: var(--muted);
 }
 .empty-state p { font-size: 1rem; margin-top: 8px; }
+
+/* ── Loans History Section ── */
+.loans-history-section {
+  max-width: 1100px;
+  margin: 0 auto 64px;
+}
+
+.loans-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loan-history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e8ecf0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.loan-history-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loan-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.loan-icon img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.7;
+}
+
+.loan-details {
+  flex: 1;
+}
+
+.loan-details h4 {
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.loan-meta {
+  margin: 0 0 4px 0;
+  font-size: 0.9rem;
+}
+
+.loan-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Status badges for loans */
+.status-returned { color: var(--green); font-weight: 600; }
+.status-active { color: var(--accent); font-weight: 600; }
+.status-overdue { color: #e74c3c; font-weight: 600; }
+
+/* ── Loans Pagination ── */
+.loans-pagination {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: var(--ink);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pagination-info {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  color: var(--ink);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Responsive pagination */
+@media (max-width: 480px) {
+  .pagination-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .pagination-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

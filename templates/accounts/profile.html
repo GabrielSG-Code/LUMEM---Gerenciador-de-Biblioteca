@@ -58,45 +58,6 @@
     </div>
     {% endif %}
 
-    <!-- Recent Activity (Only for readers) -->
-    {% if user.role == 'reader' %}
-    <div class="activity-section">
-      <h2>Histórico Recente</h2>
-      
-      {% if recent_loans %}
-        <div class="activity-list">
-          {% for loan in recent_loans %}
-            <div class="activity-item">
-              <div class="activity-icon">
-                <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Book">
-              </div>
-              <div class="activity-details">
-                <h4>{{ loan.book_title }}</h4>
-                <p class="activity-meta">
-                  {% if loan.status == 'returned' %}
-                    <span class="status-returned">Devolvido</span>
-                    em {{ loan.return_date|date:"d/m/Y" }}
-                  {% elif loan.status == 'overdue' %}
-                    <span class="status-overdue">Atrasado</span>
-                    - Venceu em {{ loan.due_date|date:"d/m/Y" }}
-                  {% else %}
-                    <span class="status-active">Ativo</span>
-                    - Vence em {{ loan.due_date|date:"d/m/Y" }}
-                  {% endif %}
-                </p>
-                <p class="activity-date">Retirado em {{ loan.start_date|date:"d/m/Y" }}</p>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state">
-          <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="No activity" width="64">
-          <p>Nenhuma atividade recente encontrada.</p>
-        </div>
-      {% endif %}
-    </div>
-    {% endif %}
 
     <!-- Account Settings Section -->
     <div class="settings-section">

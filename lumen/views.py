@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 import os
 from datetime import datetime, timedelta, date
 from accounts.models import Emprestimo, Livros
@@ -100,8 +101,82 @@ def home(request):
         except Exception as e:
             loans = []
     
+    # Get ALL loans for the history section (only for readers)
+    all_loans = []
+    if request.user.role == 'reader':
+        try:
+            # Get all loans for current user (including returned ones)
+            all_user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
+            all_user_loans_int = Emprestimo.objects.filter(id_usuario=request.user.id)
+            
+            # If we found loans for this user
+            if all_user_loans.exists() or all_user_loans_int.exists():
+                # Use whichever query found loans
+                user_loans_query = all_user_loans if all_user_loans.exists() else all_user_loans_int
+                
+                # Get ALL loans (active and returned) ordered by start date (most recent first)
+                all_user_loans_ordered = user_loans_query.order_by('-data_inicio')
+                
+                for emprestimo in all_user_loans_ordered:
+                    try:
+                        if emprestimo.id_livro:
+                            try:
+                                livro = Livros.objects.get(id_livro=emprestimo.id_livro)
+                                
+                                # Determine loan status
+                                if emprestimo.data_fim:
+                                    status = 'returned'
+                                elif emprestimo.data_entrega and emprestimo.data_entrega < date.today():
+                                    status = 'overdue'
+                                else:
+                                    status = 'active'
+                                
+                                # Simple loan data structure for history
+                                loan_data = {
+                                    'book_title': livro.titulo,
+                                    'book_category': livro.genero or 'outros',
+                                    'start_date': emprestimo.data_inicio,
+                                    'due_date': emprestimo.data_entrega,
+                                    'return_date': emprestimo.data_fim,
+                                    'status': status
+                                }
+                                all_loans.append(type('LoanHistoryData', (), loan_data))
+                                
+                            except Livros.DoesNotExist:
+                                # Add placeholder for deleted book
+                                status = 'returned' if emprestimo.data_fim else ('overdue' if emprestimo.data_entrega and emprestimo.data_entrega < date.today() else 'active')
+                                loan_data = {
+                                    'book_title': f'Livro removido (ID: {emprestimo.id_livro})',
+                                    'book_category': 'outros',
+                                    'start_date': emprestimo.data_inicio,
+                                    'due_date': emprestimo.data_entrega,
+                                    'return_date': emprestimo.data_fim,
+                                    'status': status
+                                }
+                                all_loans.append(type('LoanHistoryData', (), loan_data))
+                        else:
+                            continue
+                            
+                    except Exception as book_error:
+                        continue
+                    
+        except Exception as e:
+            all_loans = []
+
+    # Pagination for all_loans (5 loans per page)
+    loans_page = None
+    if all_loans:
+        paginator = Paginator(all_loans, 5)  # Show 5 loans per page
+        page_number = request.GET.get('loans_page', 1)
+        try:
+            loans_page = paginator.get_page(page_number)
+        except:
+            loans_page = paginator.get_page(1)
+
     return render(request, 'home.html', {
         'loans': loans, 
+        'all_loans': all_loans,
+        'loans_page': loans_page,
         'category_icons': category_icons
     })
 
