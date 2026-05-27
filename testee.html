@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --text-color: #1f2937;
+      /* Cor padrão para crônicas (pode ser alterada dinamicamente) */
+      --cover-bg: #fefaf3; 
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Georgia', serif;
+    }
+
+    body {
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Cores específicas por categoria */
+    .book-container.crônicas { --cover-bg: #fef6e4; }
+    .book-container.ficção { --cover-bg: #ecfeff; }
+
+    /* 1. O CONTAINER PRINCIPAL (Cria o ambiente 3D) */
+    .book-container {
+      width: 220px;
+      height: 320px;
+      perspective: 1000px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    /* 2. AS PÁGINAS INTERNAS (Ficam estáticas atrás da capa) */
+    .book-pages {
+      position: absolute;
+      width: 95%;
+      height: 96%;
+      top: 2%;
+      right: 2%;
+      background: #eee;
+      border-radius: 2px 6px 6px 2px;
+      box-shadow: 
+        inset -3px 0px 5px rgba(0,0,0,0.1),
+        3px 3px 8px rgba(0,0,0,0.1);
+      z-index: 1;
+      /* Simula as linhas das páginas cortadas */
+      background-image: linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.1) 95%),
+                        linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 4px;
+    }
+
+    /* 3. A CAPA DO LIVRO (Rotaciona para a esquerda no eixo Y) */
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      background: var(--cover-bg);
+      border-radius: 4px 10px 10px 4px;
+      padding: 25px 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.08);
+      position: absolute;
+      z-index: 2;
+      
+      /* Define a lombada/eixo de rotação fixo na borda esquerda */
+      transform-origin: left center;
+      transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease;
+      box-shadow: 2px 4px 10px rgba(0,0,0,0.15);
+    }
+
+    /* Efeito de semiabertura em 3D ao passar o mouse */
+    .book-container:hover .book-cover {
+      transform: rotateY(-30deg);
+      box-shadow: -5px 10px 25px rgba(0,0,0,0.25);
+    }
+
+    /* Sombreamento sutil na lombada para dar realismo */
+    .book-cover::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 12px;
+      background: linear-gradient(90deg, rgba(0,0,0,0.06) 0%, transparent 100%);
+      border-radius: 4px 0 0 4px;
+    }
+
+    /* Linha decorativa perto da lombada (estilo clássico da referência) */
+    .book-cover::after {
+      content: '';
+      position: absolute;
+      left: 14px; top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(0,0,0,0.04);
+    }
+
+    /* Elementos Internos do Livro */
+    .due-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 12px;
+      color: white;
+      z-index: 3;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .due-badge.ok { background-color: #10b981; }
+
+    .book-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--text-color);
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .book-author {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .book-illustration {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .book-illustration img {
+      max-width: 80px;
+      max-height: 80px;
+      object-fit: contain;
+      opacity: 0.85;
+    }
+
+    .book-category {
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-color);
+      opacity: 0.6;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding-top: 12px;
+      position: relative;
+    }
+
+    .book-category::before {
+      content: '◆';
+      position: absolute;
+      top: -8px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--cover-bg);
+      padding: 0 6px;
+      font-size: 0.6rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="book-container crônicas">
+    
+    <div class="due-badge ok">23/05</div>
+    
+    <div class="book-pages"></div>
+
+    <div class="book-cover">
+      <div>
+        <div class="book-title">Para não esquecer</div>
+        <div class="book-author">Clarice Lispector</div>
+      </div>
+
+      <div class="book-illustration">
+        <img src="https://cdn-icons-png.flaticon.com/512/18125/18125320.png" alt="Crônicas">
+      </div>
+
+      <div class="book-category">Crônicas</div>
+    </div>
+
+  </div>
+
+</body>
+</html>

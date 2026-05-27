@@ -179,6 +179,12 @@ class Autocomplete {
             results.slice(0, this.options.maxResults).forEach(item => {
                 const element = document.createElement('div');
                 element.className = 'autocomplete-item';
+                
+                // Add special styling for ineligible users
+                if (item.is_eligible === false || item.is_eligible === 'false') {
+                    element.classList.add('autocomplete-item-disabled');
+                }
+                
                 element.textContent = item.text;
                 element.dataset.id = item.id;
                 element.dataset.value = item.text;

@@ -9,11 +9,6 @@
 
 <div class="lumen-browse">
 
-  <!-- Back to home -->
-  <div class="back-btn">
-    <a href="{% url 'home' %}">← Voltar ao Início</a>
-  </div>
-
   <!-- Header -->
   <div class="browse-header">
     <h1>Explorar Acervo</h1>
@@ -89,7 +84,7 @@
   <!-- Books grid -->
   <div class="books-grid" id="booksGrid">
     {% for book in books %}
-      <div class="book-cover {{ book.category_lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ book.year|default:"2010" }}, '{{ book.publisher|default:"Editora Exemplo" }}', {{ book.total_count }}, '{{ book.description|default:"Esta é uma descrição detalhada para o livro"|escapejs }}', {{ book.available_count }})">
+      <div class="book-container {{ book.category_lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ book.year|default:"2010" }}, '{{ book.publisher|default:"Editora Exemplo" }}', {{ book.total_count }}, '{{ book.description|default:"Esta é uma descrição detalhada para o livro"|escapejs }}', {{ book.available_count }})">
         
         {% if book.available %}
           <div class="status-badge available">{{ book.availability_text }}</div>
@@ -97,16 +92,20 @@
           <div class="status-badge unavailable">{{ book.availability_text }}</div>
         {% endif %}
 
-        <div>
-          <div class="book-title">{{ book.title }}</div>
-          <div class="book-author">{{ book.author }}</div>
-        </div>
+        <div class="book-pages"></div>
 
-        <div class="book-illustration">
-          <img src="{{ book.icon_url }}" alt="{{ book.category }}" class="category-icon" data-category="{{ book.category_lower }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
-        </div>
+        <div class="book-cover {{ book.category_lower|default:'outros' }}">
+          <div>
+            <div class="book-title">{{ book.title }}</div>
+            <div class="book-author">{{ book.author }}</div>
+          </div>
 
-        <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
+          <div class="book-illustration">
+            <img src="{{ book.icon_url }}" alt="{{ book.category }}" class="category-icon" data-category="{{ book.category_lower }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
+          </div>
+
+          <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
+        </div>
       </div>
     {% empty %}
       <div class="no-results">

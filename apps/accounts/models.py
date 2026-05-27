@@ -13,6 +13,27 @@ class User(AbstractUser):
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
 
+class LoanConfig(models.Model):
+    max_loans_per_reader = models.PositiveIntegerField(default=2, help_text="Máximo de empréstimos por leitor")
+    max_overdue_days = models.PositiveIntegerField(default=7, help_text="Máximo de dias em atraso")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuração de Empréstimos"
+        verbose_name_plural = "Configurações de Empréstimos"
+
+    def __str__(self):
+        return f"Config: {self.max_loans_per_reader} empréstimos, {self.max_overdue_days} dias atraso"
+
+    @classmethod
+    def get_config(cls):
+        """Get the current loan configuration, create default if none exists"""
+        config = cls.objects.first()
+        if not config:
+            config = cls.objects.create()
+        return config
+
 class Emprestimo(models.Model):
     id = models.AutoField(primary_key=True)
     id_usuario = models.CharField(max_length=50, blank=True, null=True)
@@ -21,7 +42,7 @@ class Emprestimo(models.Model):
     data_inicio = models.DateField(blank=True, null=True)
     data_entrega = models.DateField(blank=True, null=True)
     data_fim = models.DateField(blank=True, null=True)
-    reserva = models.BooleanField(blank=True, null=True)
+    overdue_days = models.PositiveIntegerField(default=7, help_text="Dias de tolerância para atraso (armazenado na criação do empréstimo)")
 
     class Meta:
         managed = True

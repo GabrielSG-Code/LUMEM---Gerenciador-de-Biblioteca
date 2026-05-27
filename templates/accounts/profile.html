@@ -11,8 +11,8 @@
 
 <div class="profile-container">
   <div class="profile-header">
-    <div class="profile-avatar">
-      <img src="https://cdn-icons-png.flaticon.com/512/456/456283.png" alt="Profile" class="avatar-img">
+    <div class="profile-avatar {% if user.role == 'librarian' %}profile-avatar-librarian{% elif user.role == 'admin' %}profile-avatar-admin{% endif %}">
+      <img src="{{ profile_icon }}" alt="Profile" class="avatar-img">
     </div>
     <div class="profile-info">
       <h1>{{ user.get_full_name|default:user.username }}</h1>
@@ -23,7 +23,8 @@
   </div>
 
   <div class="profile-content">
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards (Only for readers) -->
+    {% if user.role == 'reader' %}
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">
@@ -55,46 +56,121 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
-    <!-- Recent Activity -->
-    <div class="activity-section">
-      <h2>Histórico Recente</h2>
+
+    <!-- Account Settings Section -->
+    <div class="settings-section">
+      <h2>Configurações da Conta</h2>
       
-      {% if recent_loans %}
-        <div class="activity-list">
-          {% for loan in recent_loans %}
-            <div class="activity-item">
-              <div class="activity-icon">
-                <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Book">
-              </div>
-              <div class="activity-details">
-                <h4>{{ loan.book_title }}</h4>
-                <p class="activity-meta">
-                  {% if loan.status == 'returned' %}
-                    <span class="status-returned">Devolvido</span>
-                    em {{ loan.return_date|date:"d/m/Y" }}
-                  {% elif loan.status == 'overdue' %}
-                    <span class="status-overdue">Atrasado</span>
-                    - Venceu em {{ loan.due_date|date:"d/m/Y" }}
-                  {% else %}
-                    <span class="status-active">Ativo</span>
-                    - Vence em {{ loan.due_date|date:"d/m/Y" }}
-                  {% endif %}
-                </p>
-                <p class="activity-date">Retirado em {{ loan.start_date|date:"d/m/Y" }}</p>
-              </div>
+      <!-- Change Password -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/3064/3064197.png" alt="Password" class="setting-icon">
+            <span>Alterar Senha</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="setting-content" id="password-section">
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="password">
+            
+            <div class="form-group">
+              <label for="{{ password_form.old_password.id_for_label }}">{{ password_form.old_password.label }}</label>
+              {{ password_form.old_password }}
             </div>
-          {% endfor %}
+            
+            <div class="form-group">
+              <label for="{{ password_form.new_password1.id_for_label }}">{{ password_form.new_password1.label }}</label>
+              {{ password_form.new_password1 }}
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ password_form.new_password2.id_for_label }}">{{ password_form.new_password2.label }}</label>
+              {{ password_form.new_password2 }}
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Senha</button>
+          </form>
         </div>
-      {% else %}
-        <div class="empty-state">
-          <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" alt="No activity" width="64">
-          <p>Nenhuma atividade recente encontrada.</p>
+      </div>
+
+      <!-- Change Email -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="Email" class="setting-icon">
+            <span>Alterar Email</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
         </div>
-      {% endif %}
+        <div class="setting-content" id="email-section">
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="email">
+            
+            <div class="form-group">
+              <label>Email Atual</label>
+              <input type="text" value="{{ user.email }}" class="form-control" disabled>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ email_form.new_email.id_for_label }}">{{ email_form.new_email.label }}</label>
+              {{ email_form.new_email }}
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ email_form.password.id_for_label }}">{{ email_form.password.label }}</label>
+              {{ email_form.password }}
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Email</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Username -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/456/456283.png" alt="Username" class="setting-icon">
+            <span>Alterar Nome de Usuário</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="setting-content" id="username-section">
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="username">
+            
+            <div class="form-group">
+              <label>Nome de Usuário Atual</label>
+              <input type="text" value="{{ user.username }}" class="form-control" disabled>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ username_form.new_username.id_for_label }}">{{ username_form.new_username.label }}</label>
+              {{ username_form.new_username }}
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ username_form.password.id_for_label }}">{{ username_form.password.label }}</label>
+              {{ username_form.password }}
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Nome de Usuário</button>
+          </form>
+        </div>
+      </div>
     </div>
 
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/profile.js' %}"></script>
 {% endblock %}

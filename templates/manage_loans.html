@@ -19,12 +19,70 @@
     {% endfor %}
   {% endif %}
 
-  <!-- Header -->
+  <!-- Header with Title and Action Buttons -->
   <div class="loans-header">
     <h1>Gerenciar Empréstimos</h1>
-    <button type="button" class="btn-new-loan" data-bs-toggle="modal" data-bs-target="#newLoanModal">
-      <span>+</span> Novo Empréstimo
-    </button>
+    <div class="header-actions">
+      <div class="dropdown">
+        <button type="button" class="btn-loan-config dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+          </svg>
+          Funções
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#newLoanModal">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+              </svg>
+              Novo Empréstimo
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dropdown-item" disabled title="Funcionalidade em desenvolvimento">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                <path d="M3 9h10v1H3V9zm0 2h4v1H3v-1z"/>
+              </svg>
+              Gerar Relatórios
+            </button>
+          </li>
+          {% if user.is_superuser or user.role == 'admin' %}
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#loanConfigModal">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+              </svg>
+              Configs de Empréstimo
+            </button>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="search-and-filters">
+    <div class="search-container">
+      <input type="text" id="loansSearchInput" placeholder="Buscar por usuário..." class="search-input">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+    </div>
+    
+    <!-- Filter Buttons -->
+    <div class="filter-btns">
+      <button class="fbtn active-todos" data-filter="todos" onclick="setFilter(this,'todos')">Todos</button>
+      <button class="fbtn" data-filter="ativo" onclick="setFilter(this,'ativo')">Ativo</button>
+      <button class="fbtn" data-filter="atrasado" onclick="setFilter(this,'atrasado')">Atrasado</button>
+      <button class="fbtn" data-filter="devolvido" onclick="setFilter(this,'devolvido')">Devolvido</button>
+    </div>
   </div>
 
   <!-- Loans Table -->
@@ -34,7 +92,6 @@
         <table class="table">
           <thead>
             <tr>
-              <th>ID Empréstimo</th>
               <th>Usuário</th>
               <th>Livro</th>
               <th>Data Início</th>
@@ -47,7 +104,6 @@
           <tbody>
             {% for loan in loans %}
               <tr>
-                <td><code>{{ loan.loan_id|default:"N/A" }}</code></td>
                 <td><strong>{{ loan.user_name }}</strong></td>
                 <td>{{ loan.book_title }}</td>
                 <td>{{ loan.start_date|date:"d/m/Y"|default:"N/A" }}</td>
@@ -56,13 +112,11 @@
                   {% if loan.return_date %}
                     <span style="color: var(--success); font-weight: 600;">{{ loan.return_date|date:"d/m/Y" }}</span>
                   {% else %}
-                    <span style="color: var(--warning);">Não devolvido</span>
+                    <span style="color: var(--warning);">Pendente</span>
                   {% endif %}
                 </td>
                 <td>
-                  {% if loan.is_reservation %}
-                    <span class="status-badge status-reservation">Reserva</span>
-                  {% elif loan.return_date %}
+                  {% if loan.return_date %}
                     <span class="status-badge status-returned">Devolvido</span>
                   {% elif loan.is_overdue %}
                     <span class="status-badge status-overdue">Atrasado</span>
@@ -82,7 +136,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="8" style="text-align: center; color: var(--muted); padding: 40px; font-style: italic;">
+                <td colspan="7" style="text-align: center; color: var(--muted); padding: 40px; font-style: italic;">
                   Nenhum empréstimo encontrado
                 </td>
               </tr>
@@ -91,6 +145,29 @@
         </table>
       </div>
     </div>
+    
+    <!-- Pagination -->
+    {% if loans_page.has_other_pages %}
+    <div class="pagination">
+      {% if loans_page.has_previous %}
+        <a href="?page={{ loans_page.previous_page_number }}" class="page-btn">‹</a>
+      {% endif %}
+      
+      {% for page_num in loans_page.paginator.page_range %}
+        {% if page_num == loans_page.number %}
+          <button class="page-btn active">{{ page_num }}</button>
+        {% elif page_num == 1 or page_num == loans_page.paginator.num_pages or page_num >= loans_page.number|add:'-1' and page_num <= loans_page.number|add:'1' %}
+          <a href="?page={{ page_num }}" class="page-btn">{{ page_num }}</a>
+        {% elif page_num == loans_page.number|add:'-2' or page_num == loans_page.number|add:'2' %}
+          <span class="page-ellipsis">...</span>
+        {% endif %}
+      {% endfor %}
+      
+      {% if loans_page.has_next %}
+        <a href="?page={{ loans_page.next_page_number }}" class="page-btn">›</a>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -105,6 +182,15 @@
       <form method="post">
         <div class="modal-body">
           {% csrf_token %}
+          
+          <!-- Display form validation errors inside modal -->
+          {% if loan_form.non_field_errors %}
+            <div class="alert alert-danger mb-3">
+              {% for error in loan_form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
           
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -154,17 +240,6 @@
             </div>
           </div>
 
-          <div class="mb-3">
-            <div class="form-check">
-              {{ loan_form.reserva }}
-              <label class="form-check-label" for="{{ loan_form.reserva.id_for_label }}">
-                É uma reserva
-              </label>
-            </div>
-            {% if loan_form.reserva.errors %}
-              <div class="text-danger mt-1">{{ loan_form.reserva.errors }}</div>
-            {% endif %}
-          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -175,9 +250,130 @@
   </div>
 </div>
 
+<!-- Loan Configuration Modal -->
+<div class="modal fade" id="loanConfigModal" tabindex="-1" aria-labelledby="loanConfigModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="loanConfigModalLabel">Configurações de Empréstimos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="loanConfigForm" method="post" action="{% url 'save_loan_config' %}">
+        <div class="modal-body">
+          {% csrf_token %}
+          
+          <!-- Display messages inside modal -->
+          <div id="configMessages" style="display: none;"></div>
+          
+          <div class="mb-3">
+            <label for="maxLoansPerReader" class="form-label">Limite de empréstimos por leitor</label>
+            <input type="number" class="form-control" id="maxLoansPerReader" name="max_loans_per_reader" 
+                   min="1" value="{{ loan_config.max_loans_per_reader|default:'2' }}" required>
+            <div class="form-text">Número máximo de empréstimos que um leitor pode ter simultaneamente</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="maxOverdueDays" class="form-label">Máximo de dias em atraso</label>
+            <input type="number" class="form-control" id="maxOverdueDays" name="max_overdue_days" 
+                   min="1" value="{{ loan_config.max_overdue_days|default:'7' }}" required>
+            <div class="form-text">Número máximo de dias que um empréstimo pode estar em atraso</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-modal-primary">Salvar Configurações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/autocomplete.js' %}"></script>
+<script>
+  // Pass preselected book data to JavaScript
+  window.preselectedBookId = '{{ selected_book_id|default:"" }}';
+  window.preselectedBookTitle = '{{ request.GET.book_title|default:""|escapejs }}';
+  window.preselectedBookAuthor = '{{ request.GET.book_author|default:""|escapejs }}';
+  // Pass form error status
+  window.hasFormErrors = {% if loan_form.non_field_errors or loan_form.errors %}true{% else %}false{% endif %};
+</script>
 <script src="{% static 'js/manage_loans.js' %}"></script>
+<script>
+// Handle loan configuration form submission
+document.getElementById('loanConfigForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const messagesDiv = document.getElementById('configMessages');
+    
+    // Validate fields
+    const maxLoans = parseInt(formData.get('max_loans_per_reader'));
+    const maxOverdue = parseInt(formData.get('max_overdue_days'));
+    
+    if (!maxLoans || maxLoans < 1 || !maxOverdue || maxOverdue < 1) {
+        messagesDiv.innerHTML = '<div class="alert alert-danger">Não é possível salvar: preencha todos os campos com valores válidos.</div>';
+        messagesDiv.style.display = 'block';
+        return;
+    }
+    
+    // Submit form via AJAX
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messagesDiv.innerHTML = '<div class="alert alert-success">Configurações salvas com sucesso.</div>';
+            messagesDiv.style.display = 'block';
+            // Auto close modal after 2 seconds
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('loanConfigModal'));
+                modal.hide();
+                messagesDiv.style.display = 'none';
+            }, 2000);
+        } else {
+            messagesDiv.innerHTML = '<div class="alert alert-danger">' + (data.error || 'Não é possível salvar: preencha todos os campos com valores válidos.') + '</div>';
+            messagesDiv.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        messagesDiv.innerHTML = '<div class="alert alert-danger">Erro ao salvar configurações. Tente novamente.</div>';
+        messagesDiv.style.display = 'block';
+    });
+});
+
+// Clear messages when modal is closed
+document.getElementById('loanConfigModal').addEventListener('hidden.bs.modal', function() {
+    const messagesDiv = document.getElementById('configMessages');
+    messagesDiv.style.display = 'none';
+    messagesDiv.innerHTML = '';
+});
+
+// Set fixed dates: start date = today, delivery date = today + 7 days
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.querySelector('input[name="data_inicio"]');
+    const endDateInput = document.querySelector('input[name="data_entrega"]');
+    
+    if (startDateInput && endDateInput) {
+        // Always set today's date for start date
+        const today = new Date();
+        const todayFormatted = today.toISOString().split('T')[0];
+        startDateInput.value = todayFormatted;
+        
+        // Calculate delivery date (today + 7 days)
+        const deliveryDate = new Date(today);
+        deliveryDate.setDate(deliveryDate.getDate() + 7);
+        const deliveryFormatted = deliveryDate.toISOString().split('T')[0];
+        endDateInput.value = deliveryFormatted;
+    }
+});
+</script>
 {% endblock %}

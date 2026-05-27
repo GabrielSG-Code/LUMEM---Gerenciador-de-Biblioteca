@@ -136,11 +136,16 @@ window.allUsers = [
     role: '{{ user.role|escapejs }}',
     badgeClass: {% if user.role == 'Administrador' %}'badge-admin'{% elif user.role == 'Bibliotecário' %}'badge-biblio'{% else %}'badge-leitor'{% endif %},
     active: {% if user.active %}true{% else %}false{% endif %},
-    lastAccess: '{{ user.last_login|escapejs }}'
+    lastAccess: '{{ user.last_login|escapejs }}',
+    isSuperuser: {% if user.is_superuser %}true{% else %}false{% endif %},
+    canEdit: {% if user.can_edit %}true{% else %}false{% endif %}
   }{% if not forloop.last %},{% endif %}
 {% empty %}
 {% endfor %}
 ];
+
+// Current logged-in user information
+window.currentUserId = {{ request.user.id }};
 </script>
 <script src="{% static 'js/manage_users.js' %}"></script>
 {% endblock %}

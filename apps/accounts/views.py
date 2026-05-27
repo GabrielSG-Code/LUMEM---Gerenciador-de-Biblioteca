@@ -6,13 +6,13 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from datetime import timedelta
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
 import json
 
-from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm
-from .models import Livros, User, Emprestimo
-from django.contrib.auth.forms import AuthenticationForm
+from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm
+from .models import Livros, User, Emprestimo, LoanConfig
 
 
 def register(request):
@@ -33,21 +33,21 @@ def register(request):
 
 def login_view(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        form = EmailOrUsernameLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('browse_collection')
+            return redirect('home')
         else:
             messages.error(request, 'Usuário ou senha inválidos.')
     else:
-        form = AuthenticationForm()
+        form = EmailOrUsernameLoginForm()
     return render(request, 'accounts/login.html', {'form': form})
 
 
 def logout_view(request):
     logout(request)
-    return redirect('login')
+    return redirect('home')
 
 
 @login_required
@@ -278,6 +278,12 @@ def manage_users(request):
     user_data = []
     for user in users:
         initials = user.username[:2].upper() if user.username else 'NA'
+        
+        # Determine if this user can be edited by the current user
+        can_edit = True
+        if user.is_superuser and not request.user.is_superuser:
+            can_edit = False
+        
         user_data.append({
             'id': user.id,
             'initials': initials,
@@ -285,7 +291,9 @@ def manage_users(request):
             'email': user.email,
             'role': user.get_role_display(),
             'active': user.is_active,
-            'last_login': user.last_login.strftime('%d/%m/%Y, %H:%M') if user.last_login else 'Nunca'
+            'last_login': user.last_login.strftime('%d/%m/%Y, %H:%M') if user.last_login else 'Nunca',
+            'is_superuser': user.is_superuser,
+            'can_edit': can_edit
         })
 
     stats = {
@@ -313,6 +321,14 @@ def update_user(request, user_id):
 
     try:
         user = get_object_or_404(User, id=user_id)
+        
+        # Prevent regular admins from editing superusers
+        if user.is_superuser and not request.user.is_superuser:
+            return JsonResponse({
+                'success': False,
+                'message': 'Acesso negado. Apenas superusuários podem editar outros superusuários.'
+            }, status=403)
+        
         data = json.loads(request.body)
 
         if 'role' in data:
@@ -451,21 +467,31 @@ def manage_loans(request):
                 loan_form.save()
                 messages.success(request, 'Empréstimo criado com sucesso!')
                 return redirect('manage_loans')
-            else:
-                messages.error(request, 'Por favor, corrija os erros no formulário.')
+            # Note: When form has errors, we don't add a general error message
+            # The specific errors will be displayed inside the modal
     
     # Filter loans based on user role
     if request.user.role == 'reader':
         # Readers see only their own loans
-        emprestimos = Emprestimo.objects.filter(
+        emprestimos_queryset = Emprestimo.objects.filter(
             id_usuario=str(request.user.id)
         ).order_by('-data_inicio')
     else:
         # Librarians and admins see all loans
-        emprestimos = Emprestimo.objects.all().order_by('-data_inicio')
+        emprestimos_queryset = Emprestimo.objects.all().order_by('-data_inicio')
+    
+    # Add pagination
+    paginator = Paginator(emprestimos_queryset, 10)  # 10 loans per page
+    page_number = request.GET.get('page')
+    try:
+        emprestimos_page = paginator.page(page_number)
+    except PageNotAnInteger:
+        emprestimos_page = paginator.page(1)
+    except EmptyPage:
+        emprestimos_page = paginator.page(paginator.num_pages)
     
     loans_data = []
-    for emp in emprestimos:
+    for emp in emprestimos_page:
         # Handle user lookup
         try:
             user = User.objects.get(id=emp.id_usuario) if emp.id_usuario else None
@@ -484,6 +510,13 @@ def manage_loans(request):
         except:
             book_title = 'Livro não encontrado'
         
+        # Calculate overdue status using loan-specific overdue_days (grandfathering)
+        is_overdue = False
+        if emp.data_entrega and not emp.data_fim:
+            # Use the overdue_days that were set when this loan was created
+            overdue_threshold = emp.data_entrega + timedelta(days=emp.overdue_days or 7)
+            is_overdue = timezone.now().date() > overdue_threshold
+        
         # Add loan data even if user/book not found
         loans_data.append({
             'id': emp.id,
@@ -493,21 +526,30 @@ def manage_loans(request):
             'start_date': emp.data_inicio,
             'due_date': emp.data_entrega,
             'return_date': emp.data_fim,
-            'is_reservation': emp.reserva,
-            'is_overdue': emp.data_entrega and emp.data_entrega < timezone.now().date() and not emp.data_fim if emp.data_entrega else False
+            'is_overdue': is_overdue
         })
+    
+    # Get current loan configuration
+    loan_config = LoanConfig.get_config()
     
     return render(request, 'manage_loans.html', {
         'loans': loans_data,
+        'loans_page': emprestimos_page,
         'loan_form': loan_form,
         'is_reader': request.user.role == 'reader',
-        'selected_book_id': selected_book_id
+        'selected_book_id': selected_book_id,
+        'loan_config': loan_config
     })
 
 
 @login_required
 def return_book(request, loan_id):
     emprestimo = get_object_or_404(Emprestimo, id=loan_id)
+
+    # Check if reader is trying to return someone else's book
+    if request.user.role == 'reader' and str(emprestimo.id_usuario) != str(request.user.id):
+        messages.error(request, 'Você só pode devolver seus próprios livros.')
+        return redirect('manage_loans')
 
     if emprestimo.data_fim:
         messages.warning(request, 'Este livro já foi devolvido.')
@@ -528,54 +570,158 @@ def return_book(request, loan_id):
 
 
 @login_required
-def profile(request):
-    """User profile view showing user information and account details"""
-    # Get user's loan statistics
-    user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
-    active_loans = user_loans.filter(data_fim__isnull=True).count()
-    total_loans = user_loans.count()
-    overdue_loans = user_loans.filter(
-        data_fim__isnull=True,
-        data_entrega__lt=timezone.now().date()
-    ).count()
+@require_http_methods(["POST"])
+def save_loan_config(request):
+    """Save loan configuration settings (only for admins)"""
     
-    # Get recent loan history (last 5 loans)
-    recent_loans = []
-    for emp in user_loans.order_by('-data_inicio')[:5]:
+    # Check if user is admin or superuser
+    if not (request.user.is_superuser or request.user.role == 'admin'):
+        return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+    
+    try:
+        max_loans_per_reader = request.POST.get('max_loans_per_reader')
+        max_overdue_days = request.POST.get('max_overdue_days')
+        
+        # Validate input
+        if not max_loans_per_reader or not max_overdue_days:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
+            })
+        
         try:
-            if emp.id_livro:
-                try:
-                    book = Livros.objects.get(id_livro=emp.id_livro)
-                    loan_data = {
-                        'book_title': book.titulo,
-                        'start_date': emp.data_inicio,
-                        'due_date': emp.data_entrega,
-                        'return_date': emp.data_fim,
-                        'is_overdue': emp.data_entrega < timezone.now().date() if emp.data_entrega and not emp.data_fim else False,
-                        'status': 'returned' if emp.data_fim else ('overdue' if emp.data_entrega < timezone.now().date() else 'active')
-                    }
-                    recent_loans.append(loan_data)
-                except Livros.DoesNotExist:
-                    loan_data = {
-                        'book_title': f'Livro removido (ID: {emp.id_livro})',
-                        'start_date': emp.data_inicio,
-                        'due_date': emp.data_entrega,
-                        'return_date': emp.data_fim,
-                        'is_overdue': False,
-                        'status': 'returned' if emp.data_fim else 'active'
-                    }
-                    recent_loans.append(loan_data)
-        except Exception:
-            continue
+            max_loans_per_reader = int(max_loans_per_reader)
+            max_overdue_days = int(max_overdue_days)
+        except ValueError:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
+            })
+        
+        if max_loans_per_reader < 1 or max_overdue_days < 1:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
+            })
+        
+        # Get or create config
+        config = LoanConfig.get_config()
+        config.max_loans_per_reader = max_loans_per_reader
+        config.max_overdue_days = max_overdue_days
+        config.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Configurações salvas com sucesso.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Erro interno do servidor. Tente novamente.'
+        })
+
+
+@login_required
+def profile(request):
+    """User profile view showing user information and account details with edit forms"""
     
-    context = {
-        'user': request.user,
-        'stats': {
+    # Handle form submissions
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        
+        if form_type == 'password':
+            password_form = ChangePasswordForm(request.user, request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                messages.success(request, 'Senha alterada com sucesso!')
+                return redirect('profile')
+            else:
+                for error in password_form.errors.values():
+                    messages.error(request, error)
+                    
+        elif form_type == 'email':
+            email_form = ChangeEmailForm(request.user, request.POST)
+            if email_form.is_valid():
+                request.user.email = email_form.cleaned_data['new_email']
+                request.user.save()
+                messages.success(request, 'Email alterado com sucesso!')
+                return redirect('profile')
+            else:
+                for error in email_form.errors.values():
+                    messages.error(request, error)
+                    
+        elif form_type == 'username':
+            username_form = ChangeUsernameForm(request.user, request.POST)
+            if username_form.is_valid():
+                request.user.username = username_form.cleaned_data['new_username']
+                request.user.save()
+                messages.success(request, 'Nome de usuário alterado com sucesso!')
+                return redirect('profile')
+            else:
+                for error in username_form.errors.values():
+                    messages.error(request, error)
+    
+    
+    # Initialize forms for display
+    password_form = ChangePasswordForm(request.user)
+    email_form = ChangeEmailForm(request.user)
+    username_form = ChangeUsernameForm(request.user)
+    
+    # Get user's loan statistics (only for readers)
+    stats = {}
+    recent_loans = []
+    
+    if request.user.role == 'reader':
+        user_loans = Emprestimo.objects.filter(id_usuario=str(request.user.id))
+        active_loans = user_loans.filter(data_fim__isnull=True).count()
+        total_loans = user_loans.count()
+        overdue_loans = user_loans.filter(
+            data_fim__isnull=True,
+            data_entrega__lt=timezone.now().date()
+        ).count()
+        
+        stats = {
             'active_loans': active_loans,
             'total_loans': total_loans,
             'overdue_loans': overdue_loans,
-        },
+        }
+        
+        # Get recent loan history (last 5 loans)
+        for emp in user_loans.order_by('-data_inicio')[:5]:
+            try:
+                if emp.id_livro:
+                    try:
+                        book = Livros.objects.get(id_livro=emp.id_livro)
+                        loan_data = {
+                            'book_title': book.titulo,
+                            'start_date': emp.data_inicio,
+                            'due_date': emp.data_entrega,
+                            'return_date': emp.data_fim,
+                            'is_overdue': emp.data_entrega < timezone.now().date() if emp.data_entrega and not emp.data_fim else False,
+                            'status': 'returned' if emp.data_fim else ('overdue' if emp.data_entrega < timezone.now().date() else 'active')
+                        }
+                        recent_loans.append(loan_data)
+                    except Livros.DoesNotExist:
+                        loan_data = {
+                            'book_title': f'Livro removido (ID: {emp.id_livro})',
+                            'start_date': emp.data_inicio,
+                            'due_date': emp.data_entrega,
+                            'return_date': emp.data_fim,
+                            'is_overdue': False,
+                            'status': 'returned' if emp.data_fim else 'active'
+                        }
+                        recent_loans.append(loan_data)
+            except Exception:
+                continue
+    
+    context = {
+        'user': request.user,
+        'stats': stats,
         'recent_loans': recent_loans,
+        'password_form': password_form,
+        'email_form': email_form,
+        'username_form': username_form,
     }
     
     return render(request, 'accounts/profile.html', context)
@@ -590,7 +736,7 @@ def autocomplete_users(request):
     if len(query) < 2:
         return JsonResponse({'results': []})
     
-    # Get eligible users (readers with < 2 active loans and no overdue loans)
+    # Get all readers matching search query
     from django.utils import timezone
     today = timezone.now().date()
     
@@ -599,9 +745,9 @@ def autocomplete_users(request):
         role='reader'
     ).filter(
         Q(username__icontains=query) | Q(email__icontains=query)
-    )[:10]
+    )[:20]
     
-    eligible_users = []
+    user_results = []
     for user in users:
         # Count active loans
         active_loans = Emprestimo.objects.filter(
@@ -616,16 +762,38 @@ def autocomplete_users(request):
             data_fim__isnull=True
         ).count()
         
-        # User is eligible if < 2 active loans and no overdue loans
-        if active_loans < 2 and overdue_loans == 0:
-            eligible_users.append({
-                'id': user.id,
-                'text': f"{user.username} ({user.email})",
-                'username': user.username,
-                'email': user.email
-            })
+        # Determine user status and display text
+        status_text = ""
+        is_eligible = True
+        
+        if overdue_loans >= 2:
+            status_text = f" - {overdue_loans} empréstimos atrasados ❌"
+            is_eligible = False
+        elif overdue_loans >= 1:
+            status_text = f" - {overdue_loans} empréstimo atrasado ⚠️"
+            is_eligible = False
+        elif active_loans >= 2:
+            status_text = f" - {active_loans} empréstimos ativos (limite atingido) ❌"
+            is_eligible = False
+        elif active_loans == 1:
+            status_text = f" - {active_loans} empréstimo ativo ✅"
+        else:
+            status_text = " - Disponível ✅"
+        
+        user_results.append({
+            'id': user.id,
+            'text': f"{user.username} ({user.email}){status_text}",
+            'username': user.username,
+            'email': user.email,
+            'active_loans': active_loans,
+            'overdue_loans': overdue_loans,
+            'is_eligible': is_eligible
+        })
     
-    return JsonResponse({'results': eligible_users})
+    # Sort results: eligible users first, then by username
+    user_results.sort(key=lambda x: (not x['is_eligible'], x['username']))
+    
+    return JsonResponse({'results': user_results})
 
 
 @login_required  
