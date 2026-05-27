@@ -58,8 +58,8 @@
 }
 
 .profile-avatar-admin {
-  background: linear-gradient(135deg, #e6c200, #f4d843) !important;
-  box-shadow: 0 8px 32px rgba(230,194,0,0.2) !important;
+  background: linear-gradient(135deg, #6c757d, #8a9196) !important;
+  box-shadow: 0 8px 32px rgba(108,117,125,0.2) !important;
 }
 
 .avatar-img {

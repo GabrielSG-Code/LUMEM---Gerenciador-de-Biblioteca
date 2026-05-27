@@ -7,23 +7,81 @@ from django.db.models import Q, Count
 from django.db import models
 from django.core.exceptions import ValidationError
 
-from .models import Livros, Emprestimo
+from .models import Livros, Emprestimo, LoanConfig
 
 User = get_user_model()
 
 
 class RegisterForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(
+        required=True,
+        error_messages={
+            'invalid': 'Insira um endereço de e-mail válido.',
+            'required': 'Este campo é obrigatório.'
+        }
+    )
 
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Customize password field error messages
+        self.fields['password1'].error_messages = {
+            'required': 'Este campo é obrigatório.'
+        }
+        self.fields['password2'].error_messages = {
+            'required': 'Este campo é obrigatório.'
+        }
+        
+        # Customize username field
+        self.fields['username'].error_messages = {
+            'required': 'Este campo é obrigatório.',
+            'unique': 'Este nome de usuário já está em uso.'
+        }
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('Este e-mail já está cadastrado.')
         return email
+    
+    def clean_password1(self):
+        password1 = self.cleaned_data.get('password1')
+        if password1:
+            # Custom validation with Portuguese messages
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError
+            
+            try:
+                validate_password(password1, self.instance)
+            except ValidationError as error:
+                # Translate common password validation errors
+                translated_errors = []
+                for msg in error.messages:
+                    if 'too similar to the username' in msg.lower():
+                        translated_errors.append('A senha é muito similar ao nome de usuário.')
+                    elif 'too short' in msg.lower() and 'at least 8 characters' in msg.lower():
+                        translated_errors.append('Esta senha é muito curta. Ela deve conter pelo menos 8 caracteres.')
+                    elif 'too common' in msg.lower():
+                        translated_errors.append('Esta senha é muito comum.')
+                    elif 'entirely numeric' in msg.lower():
+                        translated_errors.append('Esta senha é inteiramente numérica.')
+                    else:
+                        translated_errors.append(msg)
+                raise forms.ValidationError(translated_errors)
+        return password1
+    
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError('As senhas não coincidem.')
+        
+        return password2
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -39,7 +97,20 @@ class EmailOrUsernameLoginForm(AuthenticationForm):
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Email ou nome de usuário'
-        })
+        }),
+        error_messages={
+            'required': 'Este campo é obrigatório.'
+        }
+    )
+    
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Senha'
+        }),
+        error_messages={
+            'required': 'Este campo é obrigatório.'
+        }
     )
 
     def clean(self):
@@ -231,14 +302,26 @@ class LoanForm(forms.ModelForm):
         widget=forms.HiddenInput(),
         required=False
     )
-    reserva = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    data_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'readonly': 'readonly'
+        }),
+        initial=timezone.now().date,
+        label="Data de Início"
     )
-
+    data_entrega = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'readonly': 'readonly'
+        }),
+        label="Data de Entrega"
+    )
     class Meta:
         model = Emprestimo
-        fields = ['reserva']
+        fields = ['data_inicio', 'data_entrega']
 
     def __init__(self, *args, **kwargs):
         # Extract pre-selected book info if passed
@@ -247,32 +330,15 @@ class LoanForm(forms.ModelForm):
         
         super().__init__(*args, **kwargs)
         
+        # Set initial values for date fields
+        today = timezone.now().date()
+        self.fields['data_inicio'].initial = today
+        self.fields['data_entrega'].initial = today + timedelta(days=7)
+        
         try:
-            # Get eligible users (readers with < 2 active loans and no overdue loans)
-            today = timezone.now().date()
-            
+            # Get all readers - we'll show all but validate restrictions during form submission
             all_readers = User.objects.filter(role='reader')
-            eligible_users = []
-            
-            for user in all_readers:
-                # Count active loans
-                active_loans = Emprestimo.objects.filter(
-                    id_usuario=str(user.id),
-                    data_fim__isnull=True
-                ).count()
-                
-                # Check for overdue loans
-                overdue_loans = Emprestimo.objects.filter(
-                    id_usuario=str(user.id),
-                    data_entrega__lt=today,
-                    data_fim__isnull=True
-                ).count()
-                
-                # User is eligible if < 2 active loans and no overdue loans
-                if active_loans < 2 and overdue_loans == 0:
-                    eligible_users.append(user.id)
-            
-            self.fields['user'].queryset = User.objects.filter(id__in=eligible_users)
+            self.fields['user'].queryset = all_readers
             
             # Simple book queryset - available books only
             all_books = Livros.objects.all()
@@ -303,12 +369,20 @@ class LoanForm(forms.ModelForm):
                     # Find the first available book matching title and author
                     available_book = Livros.objects.filter(
                         titulo=preselected_title,
-                        autor=preselected_author,
-                        status_livro='Disponível'
+                        autor=preselected_author
+                    ).filter(
+                        Q(status_livro__iexact='disponível') |
+                        Q(status_livro__iexact='Disponível') |
+                        Q(status_livro__icontains='disponível') |
+                        Q(status_livro__icontains='Disponível') |
+                        Q(status_livro__iexact='available') |
+                        Q(status_livro__iexact='Available')
                     ).first()
                     
                     if available_book:
                         self.fields['book'].initial = available_book
+                        # Also set the search field with the book title and author
+                        self.fields['book_search'].initial = f"{preselected_title} - {preselected_author}"
                 except Exception as e:
                     pass
             
@@ -328,6 +402,35 @@ class LoanForm(forms.ModelForm):
         if not book:
             raise forms.ValidationError('Por favor, selecione um livro válido.')
         
+        # Validate user loan restrictions
+        if user:
+            today = timezone.now().date()
+            
+            # Count active loans
+            active_loans = Emprestimo.objects.filter(
+                id_usuario=str(user.id),
+                data_fim__isnull=True
+            ).count()
+            
+            # Count overdue loans
+            overdue_loans = Emprestimo.objects.filter(
+                id_usuario=str(user.id),
+                data_entrega__lt=today,
+                data_fim__isnull=True
+            ).count()
+            
+            # Check restrictions and provide specific error messages
+            if overdue_loans >= 1:
+                raise forms.ValidationError(
+                    'Não é possível realizar o empréstimo: o leitor possui empréstimos em atraso.'
+                )
+            elif active_loans >= 2:
+                raise forms.ValidationError(
+                    'Não é possível realizar o empréstimo: o leitor atingiu o limite de empréstimos permitidos.'
+                )
+        
+        # No need to validate delivery date since it's automatically calculated
+        
         return cleaned_data
 
     def save(self, commit=True):
@@ -339,9 +442,14 @@ class LoanForm(forms.ModelForm):
         
         emprestimo.id_livro = str(book.id_livro)
         
-        # Set 7-day loan period automatically
-        emprestimo.data_inicio = timezone.now().date()
-        emprestimo.data_entrega = emprestimo.data_inicio + timedelta(days=7)
+        # Always use today's date as start date and calculate delivery date (today + 7 days)
+        today = timezone.now().date()
+        emprestimo.data_inicio = today
+        emprestimo.data_entrega = today + timedelta(days=7)
+        
+        # Store current overdue days setting for this loan (grandfathering)
+        loan_config = LoanConfig.get_config()
+        emprestimo.overdue_days = loan_config.max_overdue_days
         
         emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"
         

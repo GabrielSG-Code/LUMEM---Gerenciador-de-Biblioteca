@@ -21,8 +21,8 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(Emprestimo)
 class EmprestimoAdmin(admin.ModelAdmin):
-    list_display = ('id_emprestimo', 'id_usuario', 'id_livro', 'data_inicio', 'data_entrega', 'data_fim', 'reserva')
-    list_filter = ('reserva', 'data_inicio', 'data_entrega', 'data_fim')
+    list_display = ('id_emprestimo', 'id_usuario', 'id_livro', 'data_inicio', 'data_entrega', 'data_fim')
+    list_filter = ('data_inicio', 'data_entrega', 'data_fim')
     search_fields = ('id_emprestimo', 'id_usuario', 'id_livro')
     date_hierarchy = 'data_inicio'
     ordering = ('-data_inicio',)
@@ -33,9 +33,6 @@ class EmprestimoAdmin(admin.ModelAdmin):
         }),
         ('Dates', {
             'fields': ('data_inicio', 'data_entrega', 'data_fim')
-        }),
-        ('Status', {
-            'fields': ('reserva',)
         }),
     )
 

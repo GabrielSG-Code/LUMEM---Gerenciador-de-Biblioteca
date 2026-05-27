@@ -39,7 +39,10 @@ function renderTable() {
             </div>
           </div>
         </td>
-        <td><span class="badge ${u.badgeClass}">${u.role}</span></td>
+        <td>
+          <span class="badge ${u.badgeClass}">${u.role}</span>
+          ${u.isSuperuser ? '<span class="superuser-badge">SUPER</span>' : ''}
+        </td>
         <td>
           <div class="status">
             <span class="status-dot ${u.active ? 'active' : 'inactive'}"></span>
@@ -47,7 +50,12 @@ function renderTable() {
           </div>
         </td>
         <td><span class="last-access">${u.lastAccess}</span></td>
-        <td><button class="btn-edit" onclick="openEdit(${allUsers.indexOf(u)})">Editar perfil</button></td>
+        <td>
+          ${u.canEdit 
+            ? `<button class="btn-edit" onclick="openEdit(${allUsers.indexOf(u)})">Editar perfil</button>` 
+            : `<button class="btn-edit btn-disabled" disabled title="Apenas superusuários podem editar outros superusuários">Protegido</button>`
+          }
+        </td>
       </tr>
     `).join('');
   } else {
@@ -157,6 +165,22 @@ function handleEditUser(event) {
   
   const u = allUsers[editingIndex];
   
+  // Check if user is editing their own role
+  const isEditingSelf = u.id === window.currentUserId;
+  const isChangingRole = u.role !== role;
+  
+  if (isEditingSelf && isChangingRole) {
+    const roleChangeWarning = `⚠️ ATENÇÃO: Você está alterando seu próprio perfil de "${u.role}" para "${role}".
+
+Isso pode afetar suas permissões no sistema e você pode perder acesso a funcionalidades administrativas.
+
+Tem certeza de que deseja continuar?`;
+    
+    if (!confirm(roleChangeWarning)) {
+      return; // User cancelled the operation
+    }
+  }
+  
   // Send AJAX request to Django backend
   fetch(`/accounts/users/update/${u.id}/`, {
     method: 'POST',
@@ -171,6 +195,14 @@ function handleEditUser(event) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
+      // Check if user edited their own role
+      if (isEditingSelf && isChangingRole) {
+        alert(`${data.message}\n\nA página será recarregada para aplicar as mudanças de permissão.`);
+        // Force page reload when user changes their own role
+        window.location.reload();
+        return;
+      }
+      
       // Update local data
       u.role = role;
       u.active = status;
