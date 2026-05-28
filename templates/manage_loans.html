@@ -295,7 +295,7 @@
         <h5 class="modal-title" id="reportFilterModalLabel">⚙️ Parâmetros do Relatório Gerencial</h5>
         <button type="button" class="btn-close" data-bs-dismiss="alert" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{% url 'generate_pdf_report' %}" method="GET">
+      <form action="{% url 'generate_pdf_report' %}" method="GET" target="_blank" onsubmit="bootstrap.Modal.getInstance(document.getElementById('reportFilterModal')).hide();">
         <div class="modal-body">
           <p class="text-muted small">Escolha os filtros abaixo. Caso deixe algum campo em branco, o sistema consolidará todos os dados históricos correspondentes.</p>
           
