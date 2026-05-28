@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Gerencial - Biblioteca LUMEN</title>
+    <style>
+        /* Configuração de Padrão Comercial de Páginas A4 (Sem depender da internet) */
+        @page {
+            size: A4;
+            margin: 20mm 15mm;
+            @bottom-right {
+                content: "Gerado em: {{ data_hora_geracao|date:'d/m/Y H:i' }} — Pág. " counter(page) " de " counter(pages);
+                font-family: serif;
+                font-size: 9pt;
+                color: #555;
+            }
+            @bottom-left {
+                content: "LUMEN — Controle de Ativos Restrito";
+                font-family: serif;
+                font-size: 9pt;
+                color: #555;
+            }
+        }
+        
+        body {
+            font-family: serif; /* Usa fonte local nativa para evitar requisições HTTP */
+            color: #111;
+            line-height: 1.4;
+            background: #fff;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #23395d;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 22pt;
+            margin: 0;
+            color: #23395d;
+            text-transform: uppercase;
+        }
+        
+        .header p {
+            margin: 4px 0 0 0;
+            font-size: 11pt;
+            font-style: italic;
+            color: #444;
+        }
+        
+        .filter-box {
+            background-color: #f4f6f9;
+            border-left: 4px solid #23395d;
+            padding: 10px;
+            font-size: 10pt;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            font-size: 13pt;
+            color: #23395d;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 3px;
+            margin-top: 22px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 10pt;
+        }
+        
+        th {
+            background-color: #eaeef4;
+            color: #23395d;
+            font-weight: bold;
+            border: 1px solid #b7c5d9;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        
+        td {
+            border: 1px solid #d3dfee;
+            padding: 6px 8px;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9fbfd;
+        }
+        
+        .text-center { text-align: center; }
+        .text-danger { color: #c0392b; font-weight: bold; }
+        .text-muted { color: #666; font-size: 9pt; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>LUMEN — Biblioteca Digital</h1>
+        <p>Relatório de Auditoria e Apoio à Tomada de Decisão</p>
+    </div>
+
+    <div class="filter-box">
+        <strong>Filtros Aplicados para esta Extração:</strong><br>
+        Período: {{ filtros.periodo }} | Categoria: {{ filtros.categoria }} | Restrição: {{ filtros.status }}
+    </div>
+
+    <h2>1. Situação de Inventário e Volumes Disponíveis</h2>
+    {% if livros %}
+    <table>
+        <thead>
+            <tr>
+                <th>Livro / Autor</th>
+                <th>Gênero</th>
+                <th class="text-center" style="width: 15%;">Qtd. Total</th>
+                <th class="text-center" style="width: 15%;">Disponível</th>
+                <th class="text-center" style="width: 15%;">Emprestada</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in livros %}
+            <tr>
+                <td><strong>{{ item.titulo }}</strong><br><span class="text-muted">{{ item.autor }}</span></td>
+                <td>{{ item.genero|default:"-" }}</td>
+                <td class="text-center">{{ item.total }}</td>
+                <td class="text-center" style="color: #27ae60;">{{ item.disponivel }}</td>
+                <td class="text-center">{{ item.emprestada }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="text-muted">Nenhum livro listado com os filtros selecionados.</p>
+    {% endif %}
+
+    <h2>2. Livros Mais Emprestados (Top de Circulação)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center" style="width: 10%;">Posição</th>
+                <th>Livro / Autor</th>
+                <th>Gênero</th>
+                <th class="text-center" style="width: 25%;">Total de Saídas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rank in ranking %}
+            <tr>
+                <td class="text-center"><strong>{{ forloop.counter }}º</strong></td>
+                <td><strong>{{ rank.id_livro__titulo }}</strong><br><span class="text-muted">{{ rank.id_livro__autor }}</span></td>
+                <td>{{ rank.id_livro__genero }}</td>
+                <td class="text-center">{{ rank.total_saidas }} retiradas</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-muted">Nenhuma movimentação registrada no período.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>3. Usuários Inadimplentes (Com Devoluções em Atraso)</h2>
+    {% if atrasados %}
+    <table>
+        <thead>
+            <tr>
+                <th>Leitor / Contato</th>
+                <th>Obra Retirada</th>
+                <th class="text-center">Data Limite</th>
+                <th class="text-center" style="width: 20%;">Dias em Atraso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in atrasados %}
+            <tr>
+                <td><strong>{{ u.usuario }}</strong><br><span class="text-muted">{{ u.email }}</span></td>
+                <td>{{ u.livro }}</td>
+                <td class="text-center">{{ u.vencimento|date:"d/m/Y" }}</td>
+                <td class="text-center text-danger">{{ u.dias_atraso }} dias</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p style="color: #27ae60; font-size: 10pt;">Excelente! Não existem usuários inadimplentes ou em atraso na biblioteca atualmente.</p>
+    {% endif %}
+
+</body>
+</html>
