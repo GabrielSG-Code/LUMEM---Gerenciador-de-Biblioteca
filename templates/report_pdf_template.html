@@ -4,28 +4,29 @@
     <meta charset="UTF-8">
     <title>Relatório Gerencial - Biblioteca LUMEN</title>
     <style>
-        /* Configuração de Padrão Industrial de Páginas A4 */
+        /* Configuração de Padrão Comercial de Páginas A4 (Sem depender da internet) */
         @page {
             size: A4;
-            margin: 22mm 16mm;
+            margin: 20mm 15mm;
             @bottom-right {
                 content: "Gerado em: {{ data_hora_geracao|date:'d/m/Y H:i' }} — Pág. " counter(page) " de " counter(pages);
-                font-family: 'Times New Roman', serif;
+                font-family: serif;
                 font-size: 9pt;
                 color: #555;
             }
             @bottom-left {
                 content: "LUMEN — Controle de Ativos Restrito";
-                font-family: 'Times New Roman', serif;
+                font-family: serif;
                 font-size: 9pt;
                 color: #555;
             }
         }
         
         body {
-            font-family: 'Times New Roman', serif;
+            font-family: serif; /* Usa fonte local nativa para evitar requisições HTTP */
             color: #111;
             line-height: 1.4;
+            background: #fff;
         }
         
         .header {
@@ -64,7 +65,7 @@
             padding-bottom: 3px;
             margin-top: 22px;
             margin-bottom: 10px;
-            page-break-after: avoid; /* Impede títulos órfãos no fim da página */
+            page-break-after: avoid;
         }
         
         table {
@@ -186,7 +187,7 @@
         </tbody>
     </table>
     {% else %}
-        <p style="color: #27ae60; font-size: 10pt;">🎉 Excelente! Não existem usuários inadimplentes ou em atraso na biblioteca atualmente.</p>
+        <p style="color: #27ae60; font-size: 10pt;">Excelente! Não existem usuários inadimplentes ou em atraso na biblioteca atualmente.</p>
     {% endif %}
 
 </body>

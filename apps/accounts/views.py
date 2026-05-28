@@ -12,6 +12,12 @@ from django.db.models import Q, Count
 from django.template.loader import render_to_string
 import json
 
+# Importações do ReportLab
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm
 from .models import Livros, User, Emprestimo, LoanConfig
 
@@ -833,11 +839,11 @@ def autocomplete_books(request):
 
 @login_required
 def generate_pdf_report(request):
-    # Proteção extra de segurança: Apenas administradores e bibliotecários acessam
+    # Segurança: Apenas administrador ou bibliotecário
     if request.user.role == 'reader':
         return HttpResponse("Acesso Negado: Privilégios insuficientes.", status=403)
-        
-    # 1. CAPTURA DOS FILTROS DO MODAL
+
+    # 1. CAPTURA DOS FILTROS DO MODAL GET
     data_de = request.GET.get('data_de')
     data_ate = request.GET.get('data_ate')
     categoria = request.GET.get('categoria')
@@ -845,94 +851,216 @@ def generate_pdf_report(request):
 
     hoje = timezone.now().date()
 
-    # 2. CONSTRUÇÃO DAS CONSULTAS FILTRADAS (QUERYSETS)
+    # 2. CONFIGURAÇÃO DA RESPOSTA HTTP (DOWNLOAD DIRETO)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Relatorio_LUMEN_{hoje.strftime("%d_%m_%Y")}.pdf"'
+
+    # 3. CRIAÇÃO DO DOCUMENTO EM MEMÓRIA
+    doc = SimpleDocTemplate(
+        response, 
+        pagesize=A4,
+        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=50
+    )
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=20, 
+        textColor=colors.HexColor('#23395d'), alignment=1, spaceAfter=15
+    )
+    subtitle_style = ParagraphStyle(
+        'SubTitleStyle', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=11, 
+        textColor=colors.HexColor('#444444'), alignment=1, spaceAfter=20
+    )
+    h2_style = ParagraphStyle(
+        'H2Style', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=13, 
+        textColor=colors.HexColor('#23395d'), spaceBefore=15, spaceAfter=10
+    )
+    body_style = ParagraphStyle(
+        'BodyStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, textColor=colors.black
+    )
+    danger_style = ParagraphStyle(
+        'DangerStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#c0392b')
+    )
+    filter_style = ParagraphStyle(
+        'FilterStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#555555')
+    )
+
+    story = []
+
+    # Cabeçalho
+    story.append(Paragraph("LUMEN — BIBLIOTECA DIGITAL", title_style))
+    story.append(Paragraph("Relatório de Auditoria e Apoio à Tomada de Decisão", subtitle_style))
+    
+    p_de = data_de if data_de else "Início"
+    p_ate = data_ate if data_ate else "Hoje"
+    cat_txt = categoria if categoria else "Todas"
+    story.append(Paragraph(f"<b>Filtros Ativos:</b> Período: {p_de} até {p_ate} | Gênero: {cat_txt}", filter_style))
+    story.append(Spacer(1, 15))
+
+    # ==========================================
+    # SEÇÃO 1: SITUAÇÃO DE LIVROS (QUANTITATIVOS)
+    # ==========================================
+    story.append(Paragraph("1. Situação de Inventário e Volumes Disponíveis", h2_style))
+    
     livros_qs = Livros.objects.all()
-    emprestimos_qs = Emprestimo.objects.all()
-
-    # Aplicação do Filtro de Período Cronológico
-    if data_de:
-        emprestimos_qs = list(filter(lambda x: x.data_inicio >= timezone.datetime.strptime(data_de, "%Y-%m-%d").date(), emprestimos_qs))
-    if data_ate:
-        emprestimos_qs = list(filter(lambda x: x.data_inicio <= timezone.datetime.strptime(data_ate, "%Y-%m-%d").date(), emprestimos_qs))
-
-    # Aplicação do Filtro de Categoria/Gênero
     if categoria:
         livros_qs = livros_qs.filter(genero__icontains=categoria)
 
-    # 3. COMPILAÇÃO DOS DADOS REQUISITADOS
-    # Item A: Lista de livros com Quantidade disponível e emprestada
-    lista_livros_relatorio = []
+    dados_livros = [["Livro / Autor", "Gênero", "Total", "Disponível", "Emprestada"]]
+    
+    # Mapeamento simples na memória para evitar Joins complexos que dão erro 500
+    todos_emprestimos_ativos = Emprestimo.objects.filter(data_fim__isnull=True)
+    
     for livro in livros_qs:
-        # Conta empréstimos ativos daquele livro específico
-        total_emprestado = Emprestimo.objects.filter(id_livro=livro.id_livro, data_fim__isnull=True).count()
-        
-        # Exemplo baseado na lógica padrão de estoque simplificado
-        total_exemplares = 5 # Ajuste conforme o campo real de total se houver no seu banco
+        # Conta quantos empréstimos ativos existem para o ID deste livro
+        total_emprestado = todos_emprestimos_ativos.filter(id_livro=livro.id_livro).count()
+        total_exemplares = 5 
         disponivel = max(0, total_exemplares - total_emprestado)
         
-        # Filtro avançado do modal baseado no estoque
         if status_filtro == 'disponiveis' and disponivel == 0:
             continue
 
-        lista_livros_relatorio.append({
-            'titulo': livro.titulo,
-            'autor': livro.autor,
-            'genero': livro.genero,
-            'total': total_exemplares,
-            'disponivel': disponivel,
-            'emprestada': total_emprestado
-        })
+        p_livro = Paragraph(f"<b>{livro.titulo}</b><br/><font color='#666666'>{livro.autor}</font>", body_style)
+        dados_livros.append([
+            p_livro, 
+            livro.genero if livro.genero else "-", 
+            str(total_exemplares), 
+            str(disponivel), 
+            str(total_emprestado)
+        ])
 
-    # Item B: Ranking dos Livros Mais Emprestados
-    # Conta o histórico agregando por ID de livro
-    livros_mais_emprestados = (
-        Emprestimo.objects.values('id_livro__titulo', 'id_livro__autor', 'id_livro__genero')
+    if len(dados_livros) > 1:
+        t_livros = Table(dados_livros, colWidths=[200, 110, 60, 70, 70])
+        t_livros.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
+            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 6),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        story.append(t_livros)
+    else:
+        story.append(Paragraph("Nenhum registro de acervo compatível.", body_style))
+
+    story.append(Spacer(1, 15))
+
+    # ==========================================
+    # SEÇÃO 2: LIVROS MAIS EMPRESTADOS (RANKING)
+    # ==========================================
+    story.append(Paragraph("2. Livros Mais Emprestados (Top de Circulação)", h2_style))
+    
+    historico_emprestimos = Emprestimo.objects.all()
+    if data_de:
+        historico_emprestimos = historico_emprestimos.filter(data_inicio__gte=data_de)
+    if data_ate:
+        historico_emprestimos = historico_emprestimos.filter(data_inicio__lte=data_ate)
+
+    # Agrupamos os IDs mais emprestados de forma totalmente compatível com o seu banco
+    ranking_ids = (
+        historico_emprestimos.values('id_livro')
         .annotate(total_saidas=Count('id_emprestimo'))
-        .order_by('-total_saidas')[:5] # Pega o Top 5
+        .order_by('-total_saidas')[:5]
     )
 
-    # Item C: Lista de Usuários com Empréstimos em Atraso
-    usuarios_atrasados = []
-    todos_emprestimos_ativos = Emprestimo.objects.filter(data_fim__isnull=True)
-    
-    for emp in todos_emprestimos_ativos:
-        if emp.data_entrega < hoje:
-            atraso = (hoje - emp.data_entrega).days
-            usuarios_atrasados.append({
-                'usuario': emp.id_usuario.username if emp.id_usuario else "Removido",
-                'email': emp.id_usuario.email if emp.id_usuario else "-",
-                'livro': emp.id_livro.titulo if emp.id_livro else "Desconhecido",
-                'vencimento': emp.data_entrega,
-                'dias_atraso': atraso
-            })
+    dados_rank = [["Posição", "Livro / Autor", "Gênero", "Total Saídas"]]
+    for idx, r in enumerate(ranking_ids, start=1):
+        try:
+            livro_obj = Livros.objects.get(id_livro=r['id_livro'])
+            p_rank = Paragraph(f"<b>{livro_obj.titulo}</b><br/><font color='#666666'>{livro_obj.autor}</font>", body_style)
+            dados_rank.append([
+                f"{idx}º", 
+                p_rank, 
+                livro_obj.genero if livro_obj.genero else "-", 
+                f"{r['total_saidas']} saídas"
+            ])
+        except Livros.DoesNotExist:
+            continue
 
-    # Se o filtro pediu especificamente apenas os inadimplentes, limpa a lista de acervo comum
-    if status_filtro == 'atrasados':
-        lista_livros_relatorio = []
+    if len(dados_rank) > 1:
+        t_rank = Table(dados_rank, colWidths=[60, 250, 110, 90])
+        t_rank.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
+            ('ALIGN', (0,0), (0,-1), 'CENTER'),
+            ('ALIGN', (3,0), (3,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        story.append(t_rank)
+    else:
+        story.append(Paragraph("Não houve movimentações de saída para estes critérios.", body_style))
 
-    # 4. PREPARAÇÃO DO CONTEXTO PARA O TEMPLATE DO PDF
-    context = {
-        'livros': lista_livros_relatorio,
-        'ranking': livros_mais_emprestados,
-        'atrasados': usuarios_atrasados,
-        'data_hora_geracao': timezone.now(), # Cumpre Requisito 3 (Data/Hora no rodapé)
-        'filtros': {
-            'periodo': f"{data_de} até {data_ate}" if (data_de or data_ate) else "Todo o histórico",
-            'categoria': categoria if categoria else "Todas",
-            'status': status_filtro if status_filtro else "Todos"
-        }
-    }
+    story.append(Spacer(1, 15))
 
-    # 5. RENDERIZAÇÃO E EXPORTAÇÃO COMPATÍVEL COM NAVEGADORES
-    # Criamos um HTML dedicado ao visual de impressão limpo
-    html_string = render_to_string('accounts/report_pdf_template.html', context)
+    # ==========================================
+    # SEÇÃO 3: USUÁRIOS COM DEVOLUÇÃO EM ATRASO
+    # ==========================================
+    story.append(Paragraph("3. Usuários Inadimplentes (Com Devoluções em Atraso)", h2_style))
     
-    # Configurando a resposta HTTP para forçar o download de PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_LUMEN_{hoje.strftime("%d_%m_%Y")}.pdf"'
+    dados_atrasados = [["Leitor / Contato", "Obra Alocada", "Data Vencimento", "Dias em Atraso"]]
     
-    # Transforma o HTML compilado acima em PDF binário usando WeasyPrint
-    import weasyprint
-    weasyprint.HTML(string=html_string).write_pdf(response)
+    # Coleta empréstimos abertos cujo prazo de entrega já expirou
+    emprestimos_atrasados_qs = Emprestimo.objects.filter(data_fim__isnull=True, data_entrega__lt=hoje)
+    
+    for emp in emprestimos_atrasados_qs:
+        dias = (hoje - emp.data_entrega).days
+        
+        # Fazemos a busca manual e controlada por ID (Livre de Erros 500 de FK)
+        u_nome = "Desconhecido"
+        u_email = "Sem e-mail"
+        if emp.id_usuario_id:
+            try:
+                usr = User.objects.get(id=emp.id_usuario_id)
+                u_nome = usr.username
+                u_email = usr.email
+            except User.DoesNotExist:
+                pass
+                
+        livro_tit = "Desconhecido"
+        if emp.id_livro_id:
+            try:
+                livro_tit = Livros.objects.get(id_livro=emp.id_livro_id).titulo
+            except Livros.DoesNotExist:
+                pass
+        
+        p_user = Paragraph(f"<b>{u_nome}</b><br/><font color='#666666'>{u_email}</font>", body_style)
+        
+        dados_atrasados.append([
+            p_user, 
+            livro_tit, 
+            emp.data_entrega.strftime("%d/%m/%Y"), 
+            Paragraph(f"{dias} dias", danger_style)
+        ])
+
+    if len(dados_atrasados) > 1:
+        t_atraso = Table(dados_atrasados, colWidths=[160, 160, 100, 90])
+        t_atraso.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
+            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        story.append(t_atraso)
+    else:
+        story.append(Paragraph("Nenhuma pendência ou atraso crítico listado no momento.", body_style))
+
+    # Rodapé Dinâmico
+    def add_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 9)
+        canvas.setFillColor(colors.HexColor('#555555'))
+        canvas.drawString(40, 30, "LUMEN — Sistema de Gerenciamento de Biblioteca")
+        
+        agora_str = timezone.now().strftime("%d/%m/%Y %H:%M")
+        canvas.drawRightString(A4[0] - 40, 30, f"Gerado em: {agora_str} — Página {doc.page}")
+        canvas.restoreState()
+
+    # Compilação
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
     
     return response
