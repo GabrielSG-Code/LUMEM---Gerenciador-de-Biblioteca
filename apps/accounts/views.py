@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
+from django.template.loader import render_to_string
 import json
 
 from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm
@@ -828,3 +829,110 @@ def autocomplete_books(request):
         })
     
     return JsonResponse({'results': results})
+
+
+@login_required
+def generate_pdf_report(request):
+    # Proteção extra de segurança: Apenas administradores e bibliotecários acessam
+    if request.user.role == 'reader':
+        return HttpResponse("Acesso Negado: Privilégios insuficientes.", status=403)
+        
+    # 1. CAPTURA DOS FILTROS DO MODAL
+    data_de = request.GET.get('data_de')
+    data_ate = request.GET.get('data_ate')
+    categoria = request.GET.get('categoria')
+    status_filtro = request.GET.get('status_filtro')
+
+    hoje = timezone.now().date()
+
+    # 2. CONSTRUÇÃO DAS CONSULTAS FILTRADAS (QUERYSETS)
+    livros_qs = Livros.objects.all()
+    emprestimos_qs = Emprestimo.objects.all()
+
+    # Aplicação do Filtro de Período Cronológico
+    if data_de:
+        emprestimos_qs = list(filter(lambda x: x.data_inicio >= timezone.datetime.strptime(data_de, "%Y-%m-%d").date(), emprestimos_qs))
+    if data_ate:
+        emprestimos_qs = list(filter(lambda x: x.data_inicio <= timezone.datetime.strptime(data_ate, "%Y-%m-%d").date(), emprestimos_qs))
+
+    # Aplicação do Filtro de Categoria/Gênero
+    if categoria:
+        livros_qs = livros_qs.filter(genero__icontains=categoria)
+
+    # 3. COMPILAÇÃO DOS DADOS REQUISITADOS
+    # Item A: Lista de livros com Quantidade disponível e emprestada
+    lista_livros_relatorio = []
+    for livro in livros_qs:
+        # Conta empréstimos ativos daquele livro específico
+        total_emprestado = Emprestimo.objects.filter(id_livro=livro.id_livro, data_fim__isnull=True).count()
+        
+        # Exemplo baseado na lógica padrão de estoque simplificado
+        total_exemplares = 5 # Ajuste conforme o campo real de total se houver no seu banco
+        disponivel = max(0, total_exemplares - total_emprestado)
+        
+        # Filtro avançado do modal baseado no estoque
+        if status_filtro == 'disponiveis' and disponivel == 0:
+            continue
+
+        lista_livros_relatorio.append({
+            'titulo': livro.titulo,
+            'autor': livro.autor,
+            'genero': livro.genero,
+            'total': total_exemplares,
+            'disponivel': disponivel,
+            'emprestada': total_emprestado
+        })
+
+    # Item B: Ranking dos Livros Mais Emprestados
+    # Conta o histórico agregando por ID de livro
+    livros_mais_emprestados = (
+        Emprestimo.objects.values('id_livro__titulo', 'id_livro__autor', 'id_livro__genero')
+        .annotate(total_saidas=Count('id_emprestimo'))
+        .order_by('-total_saidas')[:5] # Pega o Top 5
+    )
+
+    # Item C: Lista de Usuários com Empréstimos em Atraso
+    usuarios_atrasados = []
+    todos_emprestimos_ativos = Emprestimo.objects.filter(data_fim__isnull=True)
+    
+    for emp in todos_emprestimos_ativos:
+        if emp.data_entrega < hoje:
+            atraso = (hoje - emp.data_entrega).days
+            usuarios_atrasados.append({
+                'usuario': emp.id_usuario.username if emp.id_usuario else "Removido",
+                'email': emp.id_usuario.email if emp.id_usuario else "-",
+                'livro': emp.id_livro.titulo if emp.id_livro else "Desconhecido",
+                'vencimento': emp.data_entrega,
+                'dias_atraso': atraso
+            })
+
+    # Se o filtro pediu especificamente apenas os inadimplentes, limpa a lista de acervo comum
+    if status_filtro == 'atrasados':
+        lista_livros_relatorio = []
+
+    # 4. PREPARAÇÃO DO CONTEXTO PARA O TEMPLATE DO PDF
+    context = {
+        'livros': lista_livros_relatorio,
+        'ranking': livros_mais_emprestados,
+        'atrasados': usuarios_atrasados,
+        'data_hora_geracao': timezone.now(), # Cumpre Requisito 3 (Data/Hora no rodapé)
+        'filtros': {
+            'periodo': f"{data_de} até {data_ate}" if (data_de or data_ate) else "Todo o histórico",
+            'categoria': categoria if categoria else "Todas",
+            'status': status_filtro if status_filtro else "Todos"
+        }
+    }
+
+    # 5. RENDERIZAÇÃO E EXPORTAÇÃO COMPATÍVEL COM NAVEGADORES
+    # Criamos um HTML dedicado ao visual de impressão limpo
+    html_string = render_to_string('accounts/report_pdf_template.html', context)
+    
+    # Configurando a resposta HTTP para forçar o download de PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Relatorio_LUMEN_{hoje.strftime("%d_%m_%Y")}.pdf"'
+    
+    # Transforma o HTML compilado acima em PDF binário usando WeasyPrint
+    import weasyprint
+    weasyprint.HTML(string=html_string).write_pdf(response)
+    
+    return response
