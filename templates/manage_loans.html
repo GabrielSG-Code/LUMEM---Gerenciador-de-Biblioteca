@@ -41,14 +41,14 @@
             </button>
           </li>
           <li>
-            <button type="button" class="dropdown-item" disabled title="Funcionalidade em desenvolvimento">
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
-                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
-                <path d="M3 9h10v1H3V9zm0 2h4v1H3v-1z"/>
-              </svg>
-              Gerar Relatórios
-            </button>
-          </li>
+            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#reportFilterModal">
+                <svg width="16" height="16" fill="currentColor" class="bi bi-file-earmark-pdf me-2" viewBox="0 0 16 16">
+                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                    <path d="M4.603 14.087a.8.8 0 0 1-.438-.42c-.046-.115-.046-.305.07-.633l.405-1.121c.122-.339.317-.765.553-1.237-.19-.415-.355-.867-.47-1.34a6 6 0 0 1-.307-1.55c0-.428.072-.816.224-1.15.174-.377.496-.64.9-.64.44 0 .765.279.932.645.154.339.224.744.224 1.184 0 .446-.07.925-.216 1.417a8 8 0 0 1 .517 1.345c.46-.2.912-.428 1.336-.672.07-.04.148-.078.225-.116.486-.241.94-.434 1.35-.5a.86.86 0 0 1 .521.092c.257.163.4.453.395.787a.8.8 0 0 1-.254.55c-.246.236-.645.35-1.17.35-.42 0-.915-.105-1.464-.31a16 16 0 0 1-1.34.586c-.175.55-.37 1.058-.57 1.51-.154.347-.323.654-.494.904-.153.22-.34.428-.567.534a.8.8 0 0 1-.406.088M6.577 10.27l.168.4c.165.388.337.764.5 1.11L6.72 12.92a1.9 1.9 0 0 1-.132.32c-.053.092-.1.11-.133.11-.036 0-.074-.015-.106-.118a2.5 2.5 0 0 1-.09-.525c.01-.307.111-.756.28-1.296z"/>
+                </svg>
+                Gerar Relatório PDF
+            </a>
+        </li>
           {% if user.is_superuser or user.role == 'admin' %}
           <li><hr class="dropdown-divider"></li>
           <li>
@@ -282,6 +282,58 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn-modal-primary">Salvar Configurações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="reportFilterModal" tabindex="-1" aria-labelledby="reportFilterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reportFilterModalLabel">⚙️ Parâmetros do Relatório Gerencial</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'generate_pdf_report' %}" method="GET" target="_blank" onsubmit="bootstrap.Modal.getInstance(document.getElementById('reportFilterModal')).hide();">
+        <div class="modal-body">
+          <p class="text-muted small">Escolha os filtros abaixo. Caso deixe algum campo em branco, o sistema consolidará todos os dados históricos correspondentes.</p>
+          
+          <div class="mb-3">
+            <label class="form-label fw-medium">Período de Empréstimo</label>
+            <div class="input-group">
+              <span class="input-group-text">De</span>
+              <input type="date" name="data_de" class="form-control">
+              <span class="input-group-text">Até</span>
+              <input type="date" name="data_ate" class="form-control">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium">Gênero / Categoria</label>
+            <select name="categoria" class="form-select">
+              <option value="">-- Todas as Categorias --</option>
+              <option value="Romance">Romance</option>
+              <option value="Ficção">Ficção Científica / Literatura</option>
+              <option value="Tecnologia">Tecnologia / Informática</option>
+              <option value="Suspense">Suspense / Policial</option>
+              </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium">Filtrar Ativos por Status</label>
+            <select name="status_filtro" class="form-select">
+              <option value="todos">Todos os Registros</option>
+              <option value="atrasados">Apenas Usuários em Atraso</option>
+              <option value="disponiveis">Apenas Livros com Estoque Disponível</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+             🚀 Confirmar e Baixar PDF
+          </button>
         </div>
       </form>
     </div>
