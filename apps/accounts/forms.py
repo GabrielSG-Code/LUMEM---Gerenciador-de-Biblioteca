@@ -332,8 +332,9 @@ class LoanForm(forms.ModelForm):
         
         # Set initial values for date fields
         today = timezone.now().date()
+        loan_config, _ = LoanConfig.objects.get_or_create()
         self.fields['data_inicio'].initial = today
-        self.fields['data_entrega'].initial = today + timedelta(days=7)
+        self.fields['data_entrega'].initial = today + timedelta(days=loan_config.loan_duration_days)
         
         try:
             # Get all readers - we'll show all but validate restrictions during form submission
@@ -419,12 +420,15 @@ class LoanForm(forms.ModelForm):
                 data_fim__isnull=True
             ).count()
             
+            # Get current loan configuration
+            loan_config = LoanConfig.get_config()
+            
             # Check restrictions and provide specific error messages
             if overdue_loans >= 1:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor possui empréstimos em atraso.'
                 )
-            elif active_loans >= 2:
+            elif active_loans >= loan_config.max_loans_per_reader:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor atingiu o limite de empréstimos permitidos.'
                 )
@@ -442,13 +446,15 @@ class LoanForm(forms.ModelForm):
         
         emprestimo.id_livro = str(book.id_livro)
         
-        # Always use today's date as start date and calculate delivery date (today + 7 days)
+        # Always use today's date as start date and calculate delivery date based on configuration
         today = timezone.now().date()
         emprestimo.data_inicio = today
-        emprestimo.data_entrega = today + timedelta(days=7)
+        
+        # Get loan configuration for duration
+        loan_config = LoanConfig.get_config()
+        emprestimo.data_entrega = today + timedelta(days=loan_config.loan_duration_days)
         
         # Store current overdue days setting for this loan (grandfathering)
-        loan_config = LoanConfig.get_config()
         emprestimo.overdue_days = loan_config.max_overdue_days
         
         emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"

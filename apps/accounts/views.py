@@ -762,6 +762,9 @@ def autocomplete_users(request):
             data_fim__isnull=True
         ).count()
         
+        # Get current loan configuration
+        loan_config = LoanConfig.get_config()
+        
         # Determine user status and display text
         status_text = ""
         is_eligible = True
@@ -772,7 +775,7 @@ def autocomplete_users(request):
         elif overdue_loans >= 1:
             status_text = f" - {overdue_loans} empréstimo atrasado ⚠️"
             is_eligible = False
-        elif active_loans >= 2:
+        elif active_loans >= loan_config.max_loans_per_reader:
             status_text = f" - {active_loans} empréstimos ativos (limite atingido) ❌"
             is_eligible = False
         elif active_loans == 1:

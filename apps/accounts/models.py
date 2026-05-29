@@ -16,6 +16,7 @@ class User(AbstractUser):
 class LoanConfig(models.Model):
     max_loans_per_reader = models.PositiveIntegerField(default=2, help_text="Máximo de empréstimos por leitor")
     max_overdue_days = models.PositiveIntegerField(default=7, help_text="Máximo de dias em atraso")
+    loan_duration_days = models.PositiveIntegerField(default=7, help_text="Duração do empréstimo em dias")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
