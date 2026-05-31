@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
 :root {
   --blue-nav:   #6396ff;
   --blue-light: #85adff;
@@ -32,11 +34,12 @@ body {
 }
 
 h1 {
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 700;
-  font-size: 1.55rem;
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 4vw, 2.8rem);
   color: var(--dark-text);
   margin-bottom: 24px;
+  padding-top: 24px;
 }
 
 /* ── STAT CARDS ── */

@@ -446,6 +446,174 @@
   margin-bottom: 20px;
 }
 
+/* Password Input Container */
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  flex: 1;
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.password-toggle:hover {
+  color: var(--accent);
+  background-color: rgba(99, 150, 255, 0.1);
+}
+
+.password-toggle:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.eye-icon {
+  width: 16px;
+  height: 16px;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Username Availability Indicator */
+.username-input-container {
+  position: relative;
+}
+
+.username-availability-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  z-index: 10;
+}
+
+.username-availability-indicator.show {
+  display: flex;
+}
+
+.availability-icon {
+  font-size: 14px;
+}
+
+.username-availability-indicator.available {
+  color: var(--success);
+}
+
+.username-availability-indicator.unavailable {
+  color: var(--danger);
+}
+
+.username-availability-indicator.checking {
+  color: var(--muted);
+}
+
+.username-input-container input {
+  padding-right: 150px;
+}
+
+/* Loading States and Visual Feedback */
+.btn-save {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-save.loading {
+  padding-left: 45px;
+}
+
+.btn-save.loading::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Form validation states */
+.form-control.validating {
+  border-color: #ffc107;
+  background-image: linear-gradient(45deg, transparent 40%, #ffc107 40%, #ffc107 60%, transparent 60%);
+  background-size: 10px 10px;
+  animation: progress 1s linear infinite;
+}
+
+.form-control.valid {
+  border-color: var(--success);
+  background-color: rgba(61, 190, 120, 0.05);
+}
+
+.form-control.invalid {
+  border-color: var(--danger);
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+@keyframes progress {
+  0% { background-position: 0 0; }
+  100% { background-position: 10px 0; }
+}
+
+/* Network status indicator */
+.network-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.network-status.offline {
+  background: var(--danger);
+  color: white;
+  display: flex;
+}
+
+.network-status.slow {
+  background: var(--warning);
+  color: white;
+  display: flex;
+}
+
 .form-group label {
   display: block;
   margin-bottom: 8px;

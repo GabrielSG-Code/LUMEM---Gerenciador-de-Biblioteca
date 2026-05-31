@@ -53,6 +53,9 @@ def login_view(request):
 
 
 def logout_view(request):
+    # Clear any remaining messages before logout
+    storage = messages.get_messages(request)
+    storage.used = True
     logout(request)
     return redirect('home')
 
@@ -587,10 +590,10 @@ def save_loan_config(request):
     
     try:
         max_loans_per_reader = request.POST.get('max_loans_per_reader')
-        max_overdue_days = request.POST.get('max_overdue_days')
+        loan_duration_days = request.POST.get('loan_duration_days')
         
         # Validate input
-        if not max_loans_per_reader or not max_overdue_days:
+        if not max_loans_per_reader or not loan_duration_days:
             return JsonResponse({
                 'success': False, 
                 'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
@@ -598,24 +601,30 @@ def save_loan_config(request):
         
         try:
             max_loans_per_reader = int(max_loans_per_reader)
-            max_overdue_days = int(max_overdue_days)
+            loan_duration_days = int(loan_duration_days)
         except ValueError:
             return JsonResponse({
                 'success': False, 
                 'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
             })
         
-        if max_loans_per_reader < 1 or max_overdue_days < 1:
+        if max_loans_per_reader < 1 or loan_duration_days < 1 or loan_duration_days > 365:
             return JsonResponse({
                 'success': False, 
                 'error': 'Não é possível salvar: preencha todos os campos com valores válidos.'
             })
         
-        # Get or create config
+        # Get or create config and ensure fresh data
         config = LoanConfig.get_config()
         config.max_loans_per_reader = max_loans_per_reader
-        config.max_overdue_days = max_overdue_days
+        config.loan_duration_days = loan_duration_days
         config.save()
+        
+        # Force refresh of configuration cache by fetching it again
+        LoanConfig.objects.filter(id=config.id).update(
+            max_loans_per_reader=max_loans_per_reader,
+            loan_duration_days=loan_duration_days
+        )
         
         return JsonResponse({
             'success': True, 
@@ -633,9 +642,17 @@ def save_loan_config(request):
 def profile(request):
     """User profile view showing user information and account details with edit forms"""
     
+    # Initialize forms
+    password_form = ChangePasswordForm(request.user)
+    email_form = ChangeEmailForm(request.user)
+    username_form = ChangeUsernameForm(request.user)
+    form_errors = {}
+    submitted_form = None
+    
     # Handle form submissions
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
+        submitted_form = form_type
         
         if form_type == 'password':
             password_form = ChangePasswordForm(request.user, request.POST)
@@ -644,8 +661,11 @@ def profile(request):
                 messages.success(request, 'Senha alterada com sucesso!')
                 return redirect('profile')
             else:
-                for error in password_form.errors.values():
-                    messages.error(request, error)
+                # Check if form has structured errors
+                if hasattr(password_form, '_structured_errors'):
+                    form_errors['password'] = password_form._structured_errors
+                else:
+                    form_errors['password'] = password_form.errors
                     
         elif form_type == 'email':
             email_form = ChangeEmailForm(request.user, request.POST)
@@ -655,8 +675,11 @@ def profile(request):
                 messages.success(request, 'Email alterado com sucesso!')
                 return redirect('profile')
             else:
-                for error in email_form.errors.values():
-                    messages.error(request, error)
+                # Check if form has structured errors
+                if hasattr(email_form, '_structured_errors'):
+                    form_errors['email'] = email_form._structured_errors
+                else:
+                    form_errors['email'] = email_form.errors
                     
         elif form_type == 'username':
             username_form = ChangeUsernameForm(request.user, request.POST)
@@ -666,14 +689,11 @@ def profile(request):
                 messages.success(request, 'Nome de usuário alterado com sucesso!')
                 return redirect('profile')
             else:
-                for error in username_form.errors.values():
-                    messages.error(request, error)
-    
-    
-    # Initialize forms for display
-    password_form = ChangePasswordForm(request.user)
-    email_form = ChangeEmailForm(request.user)
-    username_form = ChangeUsernameForm(request.user)
+                # Check if form has structured errors
+                if hasattr(username_form, '_structured_errors'):
+                    form_errors['username'] = username_form._structured_errors
+                else:
+                    form_errors['username'] = username_form.errors
     
     # Get user's loan statistics (only for readers)
     stats = {}
@@ -729,9 +749,60 @@ def profile(request):
         'password_form': password_form,
         'email_form': email_form,
         'username_form': username_form,
+        'form_errors': form_errors,
+        'submitted_form': submitted_form,
     }
     
     return render(request, 'accounts/profile.html', context)
+
+
+@login_required
+def verify_password(request):
+    """AJAX endpoint to verify current user password"""
+    if request.method == 'POST':
+        import json
+        try:
+            data = json.loads(request.body)
+            current_password = data.get('current_password', '')
+            
+            # Check if the provided password is correct
+            is_valid = request.user.check_password(current_password)
+            
+            return JsonResponse({'valid': is_valid})
+        except json.JSONDecodeError:
+            return JsonResponse({'valid': False, 'error': 'Invalid JSON'}, status=400)
+    
+    return JsonResponse({'valid': False, 'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def check_username_availability(request):
+    """AJAX endpoint to check username availability"""
+    if request.method == 'GET':
+        username = request.GET.get('username', '').strip()
+        
+        if not username:
+            return JsonResponse({'available': False, 'error': 'Username is required'})
+        
+        # Check if username is the same as current user's username
+        if username == request.user.username:
+            return JsonResponse({'available': False, 'error': 'same_as_current'})
+        
+        # Check if username is already taken
+        is_taken = User.objects.filter(username=username).exclude(id=request.user.id).exists()
+        
+        # Check for reserved usernames
+        reserved_usernames = ['admin', 'root', 'administrator', 'api', 'www', 'mail', 'ftp', 'system', 'support', 'help']
+        is_reserved = username.lower() in reserved_usernames
+        
+        if is_taken:
+            return JsonResponse({'available': False, 'error': 'taken'})
+        elif is_reserved:
+            return JsonResponse({'available': False, 'error': 'reserved'})
+        else:
+            return JsonResponse({'available': True})
+    
+    return JsonResponse({'available': False, 'error': 'Method not allowed'}, status=405)
 
 
 @login_required

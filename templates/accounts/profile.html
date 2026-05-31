@@ -9,6 +9,17 @@
 
 {% block content %}
 
+{% if messages %}
+  <div class="messages-container" style="max-width: 800px; margin: 0 auto 24px;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <div class="profile-container">
   <div class="profile-header">
     <div class="profile-avatar {% if user.role == 'librarian' %}profile-avatar-librarian{% elif user.role == 'admin' %}profile-avatar-admin{% endif %}">
@@ -73,23 +84,63 @@
           <span class="toggle-arrow">▼</span>
         </div>
         <div class="setting-content" id="password-section">
+          {% if form_errors.password %}
+            <div class="form-errors">
+              {% if form_errors.password.current_password %}
+                <div class="alert alert-danger">{{ form_errors.password.current_password }}</div>
+              {% elif form_errors.password.new_password %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.password.new_password }}</div>
+              {% else %}
+                {% for field, errors in form_errors.password.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
           <form method="post" class="setting-form">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="password">
             
             <div class="form-group">
               <label for="{{ password_form.old_password.id_for_label }}">{{ password_form.old_password.label }}</label>
-              {{ password_form.old_password }}
+              <div class="password-input-container">
+                {{ password_form.old_password }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.old_password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <div class="form-group">
               <label for="{{ password_form.new_password1.id_for_label }}">{{ password_form.new_password1.label }}</label>
-              {{ password_form.new_password1 }}
+              <div class="password-input-container">
+                {{ password_form.new_password1 }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.new_password1.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <div class="form-group">
               <label for="{{ password_form.new_password2.id_for_label }}">{{ password_form.new_password2.label }}</label>
-              {{ password_form.new_password2 }}
+              <div class="password-input-container">
+                {{ password_form.new_password2 }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.new_password2.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <button type="submit" class="btn-save">Alterar Senha</button>
@@ -107,6 +158,22 @@
           <span class="toggle-arrow">▼</span>
         </div>
         <div class="setting-content" id="email-section">
+          {% if form_errors.email %}
+            <div class="form-errors">
+              {% if form_errors.email.current_password %}
+                <div class="alert alert-danger">{{ form_errors.email.current_password }}</div>
+              {% elif form_errors.email.new_email %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.email.new_email }}</div>
+              {% else %}
+                {% for field, errors in form_errors.email.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
           <form method="post" class="setting-form">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="email">
@@ -123,7 +190,15 @@
             
             <div class="form-group">
               <label for="{{ email_form.password.id_for_label }}">{{ email_form.password.label }}</label>
-              {{ email_form.password }}
+              <div class="password-input-container">
+                {{ email_form.password }}
+                <button type="button" class="password-toggle" data-target="{{ email_form.password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <button type="submit" class="btn-save">Alterar Email</button>
@@ -141,6 +216,22 @@
           <span class="toggle-arrow">▼</span>
         </div>
         <div class="setting-content" id="username-section">
+          {% if form_errors.username %}
+            <div class="form-errors">
+              {% if form_errors.username.current_password %}
+                <div class="alert alert-danger">{{ form_errors.username.current_password }}</div>
+              {% elif form_errors.username.new_username %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.username.new_username }}</div>
+              {% else %}
+                {% for field, errors in form_errors.username.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
           <form method="post" class="setting-form">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="username">
@@ -152,12 +243,26 @@
             
             <div class="form-group">
               <label for="{{ username_form.new_username.id_for_label }}">{{ username_form.new_username.label }}</label>
-              {{ username_form.new_username }}
+              <div class="username-input-container">
+                {{ username_form.new_username }}
+                <div class="username-availability-indicator" id="username-availability">
+                  <span class="availability-icon"></span>
+                  <span class="availability-text"></span>
+                </div>
+              </div>
             </div>
             
             <div class="form-group">
               <label for="{{ username_form.password.id_for_label }}">{{ username_form.password.label }}</label>
-              {{ username_form.password }}
+              <div class="password-input-container">
+                {{ username_form.password }}
+                <button type="button" class="password-toggle" data-target="{{ username_form.password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <button type="submit" class="btn-save">Alterar Nome de Usuário</button>
@@ -167,6 +272,12 @@
     </div>
 
   </div>
+</div>
+
+<!-- Network Status Indicator -->
+<div class="network-status" id="network-status">
+  <span class="status-icon">📡</span>
+  <span class="status-text">Sem conexão</span>
 </div>
 
 {% endblock %}
