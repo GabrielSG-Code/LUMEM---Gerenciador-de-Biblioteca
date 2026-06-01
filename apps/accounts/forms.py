@@ -73,15 +73,20 @@ class RegisterForm(UserCreationForm):
                         translated_errors.append(msg)
                 raise forms.ValidationError(translated_errors)
         return password1
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        
+        # Only check password confirmation if both passwords are provided and password1 passed validation
+        if password1 and password2:
+            if password1 != password2:
+                # Only add this error to password2 field, not both
+                self.add_error('password2', 'As senhas não coincidem.')
+        
+        return cleaned_data
     
-    def clean_password2(self):
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
-        
-        if password1 and password2 and password1 != password2:
-            raise forms.ValidationError('As senhas não coincidem.')
-        
-        return password2
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -620,6 +625,47 @@ class ChangeEmailForm(forms.Form):
             self._structured_errors = structured_errors
             # Raise a generic error to prevent form submission
             raise forms.ValidationError("Existem erros nos dados fornecidos.")
+        
+        return cleaned_data
+
+
+class EditBookForm(forms.Form):
+    """Form for editing book information with validation for unchanged data"""
+    title = forms.CharField(max_length=255, label="Título")
+    author = forms.CharField(max_length=255, label="Autor") 
+    year = forms.IntegerField(required=False, min_value=1000, max_value=2100, label="Ano de Lançamento")
+    publisher = forms.CharField(max_length=255, required=False, label="Editora")
+    category = forms.CharField(max_length=255, label="Categoria")
+    copies = forms.IntegerField(min_value=1, label="Exemplares")
+    
+    def __init__(self, book_data=None, *args, **kwargs):
+        self.original_data = book_data
+        super().__init__(*args, **kwargs)
+        
+        # Pre-fill fields with existing data
+        if book_data:
+            self.fields['title'].initial = book_data.get('titulo', '')
+            self.fields['author'].initial = book_data.get('autor', '')
+            self.fields['year'].initial = book_data.get('ano', '')
+            self.fields['publisher'].initial = book_data.get('editora', '')
+            self.fields['category'].initial = book_data.get('genero', '')
+            self.fields['copies'].initial = book_data.get('total_count', 1)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        if self.original_data:
+            # Check if any data has changed
+            title_changed = cleaned_data.get('title') != self.original_data.get('titulo', '')
+            author_changed = cleaned_data.get('author') != self.original_data.get('autor', '')
+            year_changed = cleaned_data.get('year') != self.original_data.get('ano')
+            publisher_changed = cleaned_data.get('publisher') != self.original_data.get('editora', '')
+            category_changed = cleaned_data.get('category') != self.original_data.get('genero', '')
+            copies_changed = cleaned_data.get('copies') != self.original_data.get('total_count', 1)
+            
+            # If no changes were made, raise validation error
+            if not (title_changed or author_changed or year_changed or publisher_changed or category_changed or copies_changed):
+                raise forms.ValidationError('Nenhuma alteração foi detectada. Modifique pelo menos um campo para salvar as alterações.')
         
         return cleaned_data
 

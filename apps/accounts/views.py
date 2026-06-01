@@ -18,7 +18,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm
+from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm
 from .models import Livros, User, Emprestimo, LoanConfig
 
 
@@ -363,6 +363,113 @@ def update_user(request, user_id):
         return JsonResponse({
             'success': False,
             'message': f'Erro ao atualizar usuário: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def edit_book(request, book_id):
+    """Edit existing book information"""
+    if request.user.role == 'reader':
+        return JsonResponse({'success': False, 'error': 'Acesso negado. Apenas administradores e bibliotecários podem editar livros.'}, status=403)
+    
+    try:
+        # Get the representative book for this title/author combination
+        book = get_object_or_404(Livros, id_livro=book_id)
+        
+        # Get all books with same title and author to count total copies
+        same_books = Livros.objects.filter(titulo=book.titulo, autor=book.autor)
+        total_copies = same_books.count()
+        
+        # Prepare book data for form
+        book_data = {
+            'titulo': book.titulo,
+            'autor': book.autor,
+            'ano': book.ano,
+            'editora': book.editora,
+            'genero': book.genero,
+            'total_count': total_copies
+        }
+        
+        if request.method == 'POST':
+            form = EditBookForm(book_data, request.POST)
+            if form.is_valid():
+                # Update all books with same title and author
+                title = form.cleaned_data['title']
+                author = form.cleaned_data['author']
+                year = form.cleaned_data['year']
+                publisher = form.cleaned_data['publisher']
+                category = form.cleaned_data['category']
+                new_copies = form.cleaned_data['copies']
+                
+                # Update existing books
+                same_books.update(
+                    titulo=title,
+                    autor=author,
+                    ano=year,
+                    editora=publisher,
+                    genero=category
+                )
+                
+                # Handle copies count change
+                current_copies = same_books.count()
+                if new_copies > current_copies:
+                    # Add more copies
+                    copies_to_add = new_copies - current_copies
+                    for _ in range(copies_to_add):
+                        Livros.objects.create(
+                            titulo=title,
+                            autor=author,
+                            ano=year,
+                            editora=publisher,
+                            genero=category,
+                            status_livro='Disponível'
+                        )
+                elif new_copies < current_copies:
+                    # Remove excess copies (only available ones)
+                    copies_to_remove = current_copies - new_copies
+                    available_books = same_books.filter(status_livro='Disponível')
+                    
+                    if available_books.count() < copies_to_remove:
+                        return JsonResponse({
+                            'success': False, 
+                            'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
+                        })
+                    
+                    # Remove the excess available copies
+                    books_to_delete = available_books[:copies_to_remove]
+                    for book_to_delete in books_to_delete:
+                        book_to_delete.delete()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Livro "{title}" atualizado com sucesso!'
+                })
+            else:
+                # Return form errors
+                errors = []
+                for field, field_errors in form.errors.items():
+                    if field == '__all__':
+                        errors.extend(field_errors)
+                    else:
+                        for error in field_errors:
+                            errors.append(f'{form[field].label}: {error}')
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': '; '.join(errors)
+                })
+        else:
+            form = EditBookForm(book_data)
+            
+        return JsonResponse({
+            'success': True,
+            'book_data': book_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Erro ao processar solicitação: {str(e)}'
         }, status=500)
 
 
@@ -875,6 +982,51 @@ def autocomplete_users(request):
     user_results.sort(key=lambda x: (not x['is_eligible'], x['username']))
     
     return JsonResponse({'results': user_results})
+
+
+@login_required
+def search_existing_books(request):
+    """Search for existing books by title for edit functionality"""
+    if request.user.role == 'reader':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Use the same grouping logic as browse_collection
+    from django.db.models import Count, Case, When, IntegerField
+    
+    livros_query = Livros.objects.filter(
+        Q(titulo__icontains=query) | Q(autor__icontains=query)
+    )
+    
+    # Group by title and author to get unique book information (same logic as browse_collection)
+    unique_books_query = livros_query.values(
+        'titulo', 'autor', 'genero', 'ano', 'editora'
+    ).annotate(
+        total_count=Count('id_livro')
+    ).order_by('titulo', 'autor')[:10]
+    
+    results = []
+    for book_data in unique_books_query:
+        # Get a representative book for the ID
+        representative_book = livros_query.filter(
+            titulo=book_data['titulo'],
+            autor=book_data['autor']
+        ).first()
+        
+        results.append({
+            'id': representative_book.id_livro if representative_book else None,
+            'title': book_data['titulo'],
+            'author': book_data['autor'],
+            'category': book_data['genero'] or '',
+            'year': book_data['ano'],
+            'publisher': book_data['editora'] or '',
+            'total_copies': book_data['total_count']
+        })
+    
+    return JsonResponse({'results': results})
 
 
 @login_required  
