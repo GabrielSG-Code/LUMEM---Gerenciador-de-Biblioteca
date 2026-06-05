@@ -73,15 +73,20 @@ class RegisterForm(UserCreationForm):
                         translated_errors.append(msg)
                 raise forms.ValidationError(translated_errors)
         return password1
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        
+        # Only check password confirmation if both passwords are provided and password1 passed validation
+        if password1 and password2:
+            if password1 != password2:
+                # Only add this error to password2 field, not both
+                self.add_error('password2', 'As senhas não coincidem.')
+        
+        return cleaned_data
     
-    def clean_password2(self):
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
-        
-        if password1 and password2 and password1 != password2:
-            raise forms.ValidationError('As senhas não coincidem.')
-        
-        return password2
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -332,8 +337,9 @@ class LoanForm(forms.ModelForm):
         
         # Set initial values for date fields
         today = timezone.now().date()
+        loan_config, _ = LoanConfig.objects.get_or_create()
         self.fields['data_inicio'].initial = today
-        self.fields['data_entrega'].initial = today + timedelta(days=7)
+        self.fields['data_entrega'].initial = today + timedelta(days=loan_config.loan_duration_days)
         
         try:
             # Get all readers - we'll show all but validate restrictions during form submission
@@ -419,12 +425,15 @@ class LoanForm(forms.ModelForm):
                 data_fim__isnull=True
             ).count()
             
+            # Get current loan configuration
+            loan_config = LoanConfig.get_config()
+            
             # Check restrictions and provide specific error messages
             if overdue_loans >= 1:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor possui empréstimos em atraso.'
                 )
-            elif active_loans >= 2:
+            elif active_loans >= loan_config.max_loans_per_reader:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor atingiu o limite de empréstimos permitidos.'
                 )
@@ -442,13 +451,15 @@ class LoanForm(forms.ModelForm):
         
         emprestimo.id_livro = str(book.id_livro)
         
-        # Always use today's date as start date and calculate delivery date (today + 7 days)
+        # Always use today's date as start date and calculate delivery date based on configuration
         today = timezone.now().date()
         emprestimo.data_inicio = today
-        emprestimo.data_entrega = today + timedelta(days=7)
+        
+        # Get loan configuration for duration
+        loan_config = LoanConfig.get_config()
+        emprestimo.data_entrega = today + timedelta(days=loan_config.loan_duration_days)
         
         # Store current overdue days setting for this loan (grandfathering)
-        loan_config = LoanConfig.get_config()
         emprestimo.overdue_days = loan_config.max_overdue_days
         
         emprestimo.id_emprestimo = f"EMP_{emprestimo.id_usuario}_{emprestimo.id_livro}_{emprestimo.data_inicio.strftime('%Y%m%d')}"
@@ -464,7 +475,7 @@ class LoanForm(forms.ModelForm):
 
 
 class ChangePasswordForm(PasswordChangeForm):
-    """Custom password change form with Bootstrap styling"""
+    """Custom password change form with Bootstrap styling and enhanced validation"""
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -486,6 +497,70 @@ class ChangePasswordForm(PasswordChangeForm):
             'class': 'form-control',
             'placeholder': 'Confirmar nova senha'
         })
+
+    def clean(self):
+        """Custom validation with hierarchical error messages"""
+        cleaned_data = super().clean()
+        old_password = cleaned_data.get('old_password')
+        new_password1 = cleaned_data.get('new_password1')
+        new_password2 = cleaned_data.get('new_password2')
+        
+        # Create structured error storage
+        structured_errors = {}
+        
+        # 1. First priority: Check old password
+        if old_password and not self.user.check_password(old_password):
+            structured_errors['current_password'] = 'Senha atual incorreta.'
+        
+        # 2. Second priority: Validate new password requirements (only if old password is correct)
+        elif new_password1:
+            password_errors = []
+            
+            # Check password validation
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError
+            
+            try:
+                validate_password(new_password1, self.user)
+            except ValidationError as error:
+                for msg in error.messages:
+                    if 'too similar to the username' in msg.lower() or 'too similar to the email' in msg.lower():
+                        password_errors.append('Esta senha é muito parecida com o email.')
+                    elif 'too short' in msg.lower() and 'at least 8 characters' in msg.lower():
+                        password_errors.append('Senha muito curta: É preciso pelo menos 8 caracteres.')
+                    elif 'too common' in msg.lower():
+                        password_errors.append('Esta senha é muito comum.')
+                    elif 'entirely numeric' in msg.lower():
+                        password_errors.append('Esta senha é inteiramente numérica.')
+                    else:
+                        password_errors.append(msg)
+            
+            # Check if new passwords match
+            if new_password2 and new_password1 != new_password2:
+                password_errors.append('As novas senhas não coincidem.')
+            
+            # Check if new password is different from current password
+            if old_password and new_password1 == old_password:
+                password_errors.append('A nova senha deve ser diferente da senha atual.')
+            
+            # If there are password errors, create structured message
+            if password_errors:
+                if len(password_errors) == 1:
+                    structured_errors['new_password'] = password_errors[0]
+                else:
+                    error_list = []
+                    for i, error in enumerate(password_errors, 1):
+                        error_list.append(f"{i}. {error}")
+                    
+                    structured_errors['new_password'] = f"Por favor, se atente a esses detalhes para a nova senha:\n" + ";\n".join(error_list) + "."
+        
+        # Store structured errors in form
+        if structured_errors:
+            self._structured_errors = structured_errors
+            # Raise a generic error to prevent form submission
+            raise forms.ValidationError("Existem erros nos dados fornecidos.")
+        
+        return cleaned_data
 
 
 class ChangeEmailForm(forms.Form):
@@ -509,17 +584,90 @@ class ChangeEmailForm(forms.Form):
         self.user = user
         super().__init__(*args, **kwargs)
     
-    def clean_new_email(self):
-        new_email = self.cleaned_data.get('new_email')
-        if User.objects.filter(email=new_email).exclude(id=self.user.id).exists():
-            raise ValidationError('Este email já está em uso por outro usuário.')
-        return new_email
+    def clean(self):
+        """Custom validation with hierarchical error messages for email change"""
+        cleaned_data = super().clean()
+        new_email = cleaned_data.get('new_email')
+        password = cleaned_data.get('password')
+        
+        # Create structured error storage
+        structured_errors = {}
+        
+        # 1. First priority: Check current password
+        if password and not self.user.check_password(password):
+            structured_errors['current_password'] = 'Senha atual incorreta.'
+        
+        # 2. Second priority: Validate email requirements (only if password is correct)
+        elif new_email:
+            email_errors = []
+            
+            # Check if email is different from current
+            if new_email == self.user.email:
+                email_errors.append('O novo email deve ser diferente do email atual.')
+            
+            # Check if email is already in use
+            if User.objects.filter(email=new_email).exclude(id=self.user.id).exists():
+                email_errors.append('Este email já está em uso por outro usuário.')
+            
+            # If there are email errors, create structured message
+            if email_errors:
+                if len(email_errors) == 1:
+                    structured_errors['new_email'] = email_errors[0]
+                else:
+                    error_list = []
+                    for i, error in enumerate(email_errors, 1):
+                        error_list.append(f"{i}. {error}")
+                    
+                    structured_errors['new_email'] = f"Por favor, se atente a esses detalhes para o novo email:\n" + ";\n".join(error_list) + "."
+        
+        # Store structured errors in form
+        if structured_errors:
+            self._structured_errors = structured_errors
+            # Raise a generic error to prevent form submission
+            raise forms.ValidationError("Existem erros nos dados fornecidos.")
+        
+        return cleaned_data
+
+
+class EditBookForm(forms.Form):
+    """Form for editing book information with validation for unchanged data"""
+    title = forms.CharField(max_length=255, label="Título")
+    author = forms.CharField(max_length=255, label="Autor") 
+    year = forms.IntegerField(required=False, min_value=1000, max_value=2100, label="Ano de Lançamento")
+    publisher = forms.CharField(max_length=255, required=False, label="Editora")
+    category = forms.CharField(max_length=255, label="Categoria")
+    copies = forms.IntegerField(min_value=1, label="Exemplares")
     
-    def clean_password(self):
-        password = self.cleaned_data.get('password')
-        if not self.user.check_password(password):
-            raise ValidationError('Senha atual incorreta.')
-        return password
+    def __init__(self, book_data=None, *args, **kwargs):
+        self.original_data = book_data
+        super().__init__(*args, **kwargs)
+        
+        # Pre-fill fields with existing data
+        if book_data:
+            self.fields['title'].initial = book_data.get('titulo', '')
+            self.fields['author'].initial = book_data.get('autor', '')
+            self.fields['year'].initial = book_data.get('ano', '')
+            self.fields['publisher'].initial = book_data.get('editora', '')
+            self.fields['category'].initial = book_data.get('genero', '')
+            self.fields['copies'].initial = book_data.get('total_count', 1)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        if self.original_data:
+            # Check if any data has changed
+            title_changed = cleaned_data.get('title') != self.original_data.get('titulo', '')
+            author_changed = cleaned_data.get('author') != self.original_data.get('autor', '')
+            year_changed = cleaned_data.get('year') != self.original_data.get('ano')
+            publisher_changed = cleaned_data.get('publisher') != self.original_data.get('editora', '')
+            category_changed = cleaned_data.get('category') != self.original_data.get('genero', '')
+            copies_changed = cleaned_data.get('copies') != self.original_data.get('total_count', 1)
+            
+            # If no changes were made, raise validation error
+            if not (title_changed or author_changed or year_changed or publisher_changed or category_changed or copies_changed):
+                raise forms.ValidationError('Nenhuma alteração foi detectada. Modifique pelo menos um campo para salvar as alterações.')
+        
+        return cleaned_data
 
 
 class ChangeUsernameForm(forms.Form):
@@ -544,14 +692,61 @@ class ChangeUsernameForm(forms.Form):
         self.user = user
         super().__init__(*args, **kwargs)
     
-    def clean_new_username(self):
-        new_username = self.cleaned_data.get('new_username')
-        if User.objects.filter(username=new_username).exclude(id=self.user.id).exists():
-            raise ValidationError('Este nome de usuário já está em uso.')
-        return new_username
-    
-    def clean_password(self):
-        password = self.cleaned_data.get('password')
-        if not self.user.check_password(password):
-            raise ValidationError('Senha atual incorreta.')
-        return password
+    def clean(self):
+        """Custom validation with hierarchical error messages for username change"""
+        cleaned_data = super().clean()
+        new_username = cleaned_data.get('new_username')
+        password = cleaned_data.get('password')
+        
+        # Create structured error storage
+        structured_errors = {}
+        
+        # 1. First priority: Check current password
+        if password and not self.user.check_password(password):
+            structured_errors['current_password'] = 'Senha atual incorreta.'
+        
+        # 2. Second priority: Validate username requirements (only if password is correct)
+        elif new_username:
+            username_errors = []
+            
+            # Check if username is different from current
+            if new_username == self.user.username:
+                # Return early with specific message for same username
+                structured_errors['new_username'] = 'O novo nome de usuário deve ser diferente do atual.'
+                self._structured_errors = structured_errors
+                raise forms.ValidationError("Existem erros nos dados fornecidos.")
+                return cleaned_data
+            
+            # Check username length
+            if len(new_username) < 3:
+                username_errors.append('Nome de usuário muito curto: É preciso pelo menos 3 caracteres.')
+            elif len(new_username) > 150:
+                username_errors.append('Nome de usuário muito longo: Máximo de 150 caracteres.')
+            
+            # Check if username contains only valid characters
+            import re
+            if not re.match(r'^[\w.@+-]+$', new_username):
+                username_errors.append('Nome de usuário contém caracteres inválidos. Use apenas letras, números e @/./+/-/_.')
+            
+            # Check if username is already in use
+            if User.objects.filter(username=new_username).exclude(id=self.user.id).exists():
+                username_errors.append('Este nome de usuário já está em uso.')
+            
+            # If there are username errors, create structured message
+            if username_errors:
+                if len(username_errors) == 1:
+                    structured_errors['new_username'] = username_errors[0]
+                else:
+                    error_list = []
+                    for i, error in enumerate(username_errors, 1):
+                        error_list.append(f"{i}. {error}")
+                    
+                    structured_errors['new_username'] = f"Por favor, se atente a esses detalhes para o novo nome de usuário:\n" + ";\n".join(error_list) + "."
+        
+        # Store structured errors in form
+        if structured_errors:
+            self._structured_errors = structured_errors
+            # Raise a generic error to prevent form submission
+            raise forms.ValidationError("Existem erros nos dados fornecidos.")
+        
+        return cleaned_data

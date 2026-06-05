@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Emprestimo, Livros, Usuarios
+from .models import User, Emprestimo, Livros, Usuarios, LoanConfig
 
 
 @admin.register(User)
@@ -74,5 +74,16 @@ class UsuariosAdmin(admin.ModelAdmin):
         }),
         ('Permissions', {
             'fields': ('privilegio', 'status')
+        }),
+    )
+
+
+@admin.register(LoanConfig)
+class LoanConfigAdmin(admin.ModelAdmin):
+    list_display = ('max_loans_per_reader', 'max_overdue_days', 'loan_duration_days', 'updated_at')
+    
+    fieldsets = (
+        ('Loan Settings', {
+            'fields': ('max_loans_per_reader', 'loan_duration_days', 'max_overdue_days')
         }),
     )

@@ -9,6 +9,17 @@
 
 {% block content %}
 
+{% if messages %}
+  <div class="messages-container" style="max-width: 1100px; margin: 0 auto 24px;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <div class="lumen-dashboard">
 
   <!-- Hero -->

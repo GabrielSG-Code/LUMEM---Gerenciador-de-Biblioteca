@@ -273,10 +273,10 @@
           </div>
 
           <div class="mb-3">
-            <label for="maxOverdueDays" class="form-label">Máximo de dias em atraso</label>
-            <input type="number" class="form-control" id="maxOverdueDays" name="max_overdue_days" 
-                   min="1" value="{{ loan_config.max_overdue_days|default:'7' }}" required>
-            <div class="form-text">Número máximo de dias que um empréstimo pode estar em atraso</div>
+            <label for="loanDurationDays" class="form-label">Duração total do empréstimo (dias)</label>
+            <input type="number" class="form-control" id="loanDurationDays" name="loan_duration_days" 
+                   min="1" max="365" value="{{ loan_config.loan_duration_days|default:'7' }}" required>
+            <div class="form-text">Número de dias que um empréstimo permanece ativo antes do vencimento</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -364,9 +364,9 @@ document.getElementById('loanConfigForm').addEventListener('submit', function(e)
     
     // Validate fields
     const maxLoans = parseInt(formData.get('max_loans_per_reader'));
-    const maxOverdue = parseInt(formData.get('max_overdue_days'));
+    const loanDuration = parseInt(formData.get('loan_duration_days'));
     
-    if (!maxLoans || maxLoans < 1 || !maxOverdue || maxOverdue < 1) {
+    if (!maxLoans || maxLoans < 1 || !loanDuration || loanDuration < 1 || loanDuration > 365) {
         messagesDiv.innerHTML = '<div class="alert alert-danger">Não é possível salvar: preencha todos os campos com valores válidos.</div>';
         messagesDiv.style.display = 'block';
         return;
@@ -383,13 +383,15 @@ document.getElementById('loanConfigForm').addEventListener('submit', function(e)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            messagesDiv.innerHTML = '<div class="alert alert-success">Configurações salvas com sucesso.</div>';
+            messagesDiv.innerHTML = '<div class="alert alert-success">Configurações salvas com sucesso. A página será atualizada para aplicar as mudanças.</div>';
             messagesDiv.style.display = 'block';
-            // Auto close modal after 2 seconds
+            // Auto close modal and refresh page after 2 seconds
             setTimeout(() => {
                 const modal = bootstrap.Modal.getInstance(document.getElementById('loanConfigModal'));
                 modal.hide();
                 messagesDiv.style.display = 'none';
+                // Refresh page to ensure new configuration is applied
+                window.location.reload();
             }, 2000);
         } else {
             messagesDiv.innerHTML = '<div class="alert alert-danger">' + (data.error || 'Não é possível salvar: preencha todos os campos com valores válidos.') + '</div>';
