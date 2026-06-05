@@ -1,0 +1,423 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #f0f3fb;
+  --ink: #1e2a45;
+  --muted: #6b7a99;
+  --accent: #6396ff;
+  --blue-nav: #6396ff;
+  --blue-light: #85adff;
+  --blue-hover: #4d7de8;
+  --white: #ffffff;
+  --green: #3dbe78;
+  --card-shadow: 0 8px 32px rgba(99,150,255,0.13);
+}
+
+.lumen-dashboard {
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 48px 32px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Hero ── */
+.lumen-hero {
+  max-width: 900px;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+
+.lumen-hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  color: var(--ink);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.lumen-hero h1 span {
+  color: var(--accent);
+}
+
+.lumen-hero p {
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 300;
+  margin-bottom: 28px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary-lumen {
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-decoration: none;
+}
+.btn-primary-lumen:hover { background: var(--accent); color: #fff; }
+
+.btn-outline-lumen {
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  padding: 12px 28px;
+  border-radius: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-outline-lumen:hover { background: var(--ink); color: #fff; }
+
+/* ── Section header ── */
+.section-header {
+  max-width: 1100px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 1.5px solid rgba(0,0,0,0.1);
+  padding-bottom: 12px;
+}
+
+.section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--ink);
+}
+
+.section-header span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Book shelf ── */
+.book-shelf {
+  max-width: 1100px;
+  margin: 0 auto 64px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+/* ── 3D Book Model ── */
+.book-container {
+  width: 200px;
+  height: 300px;
+  perspective: 1000px;
+  position: relative;
+  cursor: default;
+}
+
+/* Book pages (static background) */
+.book-pages {
+  position: absolute;
+  width: 95%;
+  height: 96%;
+  top: 2%;
+  right: 2%;
+  background: #eee;
+  border-radius: 2px 6px 6px 2px;
+  box-shadow: 
+    inset -3px 0px 5px rgba(0,0,0,0.1),
+    3px 3px 8px rgba(0,0,0,0.1);
+  z-index: 1;
+  /* Simulates page edges */
+  background-image: linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.1) 95%),
+                    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 4px;
+}
+
+/* Book cover (rotates on hover) */
+.book-cover {
+  width: 100%;
+  height: 100%;
+  background: var(--cover-bg, #f5f0eb);
+  border-radius: 4px 10px 10px 4px;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+  border: 1px solid rgba(0,0,0,0.08);
+  position: absolute;
+  z-index: 2;
+  opacity: 1;
+  
+  /* Fixed spine rotation axis at left border */
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.15);
+}
+
+/* 3D semi-open effect on hover */
+.book-container:hover .book-cover {
+  transform: rotateY(-30deg);
+  box-shadow: -5px 10px 25px rgba(0,0,0,0.25);
+}
+
+/* Spine shadowing for realism */
+.book-cover::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 12px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 0%, transparent 100%);
+  border-radius: 4px 0 0 4px;
+}
+
+/* Decorative line near spine (classic book style) */
+.book-cover::after {
+  content: '';
+  position: absolute;
+  left: 14px; top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(0,0,0,0.04);
+}
+
+/* Badge de prazo */
+.due-badge {
+  position: absolute;
+  top: -10px; right: -10px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  z-index: 3;
+  box-shadow: 0 2px 6px rgba(231,76,60,0.35);
+}
+
+.due-badge.ok {
+  background: #27ae60;
+  box-shadow: 0 2px 8px rgba(39,174,96,0.35);
+}
+
+.book-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-color, #1a1612);
+}
+
+.book-author {
+  font-size: 0.72rem;
+  color: var(--text-color, #1a1612);
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+.book-illustration {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.book-illustration img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  opacity: 0.75;
+}
+
+.book-category {
+  font-size: 0.65rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-color, #1a1612);
+  opacity: 0.6;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  padding-top: 10px;
+  position: relative;
+}
+
+.book-category::before {
+  content: '◆';
+  position: absolute;
+  top: -8px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--cover-bg);
+  padding: 0 5px;
+  font-size: 0.55rem;
+}
+
+/* Paletas por categoria */
+.book-cover.investigacao { --cover-bg: #f3f4f6; background: var(--cover-bg) !important; }
+.book-cover.romance      { --cover-bg: #fdf2f8; background: var(--cover-bg) !important; }
+.book-cover.ficcao       { --cover-bg: #ecfeff; background: var(--cover-bg) !important; }
+.book-cover.terror       { --cover-bg: #111827; background: var(--cover-bg) !important; --text-color: #f3f4f6; }
+.book-cover.historico    { --cover-bg: #fefce8; background: var(--cover-bg) !important; }
+.book-cover.drama        { --cover-bg: #f0f9ff; background: var(--cover-bg) !important; }
+.book-cover.outros       { --cover-bg: #f5f0eb; background: var(--cover-bg) !important; }
+.book-cover.literatura-estrangeira { --cover-bg: #e0f2fe; --accent-color: #0369a1; background: var(--cover-bg) !important; }
+.book-cover.fantasia { --cover-bg: #f5f3ff; --accent-color: #6d28d9; background: var(--cover-bg) !important; }
+.book-cover.autoajuda { --cover-bg: #ecfdf5; --accent-color: #047857; background: var(--cover-bg) !important; }
+.book-cover.infantojuvenil { --cover-bg: #fff1f2; --accent-color: #be123c; background: var(--cover-bg) !important; }
+.book-cover.biografia { --cover-bg: #fafaf9; --accent-color: #44403c; background: var(--cover-bg) !important; }
+.book-cover.administracao { --cover-bg: #f1f5f9; --accent-color: #334155; background: var(--cover-bg) !important; }
+.book-cover.artes { --cover-bg: #fff7ed; --accent-color: #c2410c; background: var(--cover-bg) !important; }
+.book-cover.economia { --cover-bg: #f0fdf4; --accent-color: #15803d; background: var(--cover-bg) !important; }
+.book-cover.hq { --cover-bg: #fef2f2; --accent-color: #dc2626; background: var(--cover-bg) !important; }
+.book-cover.informatica-tecnologia { --cover-bg: #0f172a; --accent-color: #38bdf8; --text-color: #f8fafc; background: var(--cover-bg) !important; }
+.book-cover.lgbt { --cover-bg: #fdf2f8; --accent-color: #db2777; background: var(--cover-bg) !important; }
+
+.terror .book-illustration img { filter: brightness(0) invert(1); }
+
+/* ── Estado vazio ── */
+.empty-state {
+  width: 100%;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty-state p { font-size: 1rem; margin-top: 8px; }
+
+/* ── Loans History Section ── */
+.loans-history-section {
+  max-width: 1100px;
+  margin: 0 auto 64px;
+}
+
+.loans-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loan-history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e8ecf0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.loan-history-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loan-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.loan-icon img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.7;
+}
+
+.loan-details {
+  flex: 1;
+}
+
+.loan-details h4 {
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.loan-meta {
+  margin: 0 0 4px 0;
+  font-size: 0.9rem;
+}
+
+.loan-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Status badges for loans */
+.status-returned { color: var(--green); font-weight: 600; }
+.status-active { color: var(--accent); font-weight: 600; }
+.status-overdue { color: #e74c3c; font-weight: 600; }
+
+/* ── Loans Pagination ── */
+.loans-pagination {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: var(--ink);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pagination-info {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  color: var(--ink);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Responsive pagination */
+@media (max-width: 480px) {
+  .pagination-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .pagination-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

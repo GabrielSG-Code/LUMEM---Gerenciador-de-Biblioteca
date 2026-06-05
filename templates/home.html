@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - LUMEN{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+  <div class="messages-container" style="max-width: 1100px; margin: 0 auto 24px;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="lumen-dashboard">
+
+  <!-- Hero -->
+  <div class="lumen-hero">
+    <h1>Olá, <span>{{ request.user.username }}</span> 👋</h1>
+    <p>Bem-vindo ao LUMEN — seu acervo pessoal de empréstimos.</p>
+    <div class="hero-actions">
+      <a href="{% url 'browse_collection' %}" class="btn-primary-lumen">Explorar Acervo</a>
+      {% if user.is_superuser or user.role == 'admin' %}
+        <a href="{% url 'manage_users' %}" class="btn-outline-lumen">Gerenciar Usuários</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if user.is_authenticated and user.role == 'reader' %}
+  <!-- Empréstimos ativos -->
+  <div class="section-header">
+    <h2>Empréstimos Ativos</h2>
+    <span>{{ loans|length }} livro{{ loans|length|pluralize }}</span>
+  </div>
+
+  <div class="book-shelf">
+    {% if loans %}
+      {% for loan in loans %}
+        {% with book=loan.book %}
+          <div class="book-container {{ book.category|lower|default:'outros' }}">
+
+            {% if loan.is_overdue %}
+              <div class="due-badge">Atrasado</div>
+            {% else %}
+              <div class="due-badge ok">{{ loan.due_date|date:"d/m" }}</div>
+            {% endif %}
+
+            <div class="book-pages"></div>
+
+            <div class="book-cover {{ book.category|lower|default:'outros' }}">
+              <div>
+                <div class="book-title">{{ book.title }}</div>
+                <div class="book-author">{{ book.author }}</div>
+              </div>
+
+              <div class="book-illustration">
+                <img src="{{ book.icon_url }}" alt="{{ book.category }}">
+              </div>
+
+              <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
+            </div>
+          </div>
+        {% endwith %}
+      {% endfor %}
+
+    {% else %}
+      <div class="empty-state">
+        <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" width="64" style="opacity:0.3">
+        <p>Você não possui empréstimos ativos no momento.</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- All Loans History (Only for readers) -->
+  {% if user.is_authenticated and user.role == 'reader' %}
+  <div class="section-header">
+    <h2>Todos os Empréstimos</h2>
+    <span>{{ all_loans|length }} empréstimo{{ all_loans|length|pluralize }}</span>
+  </div>
+
+  <div class="loans-history-section">
+    {% if loans_page %}
+      <div class="loans-history-list">
+        {% for loan in loans_page %}
+          <div class="loan-history-item">
+            <div class="loan-icon">
+              <img src="https://cdn-icons-png.flaticon.com/512/1146/1146315.png" alt="Book">
+            </div>
+            <div class="loan-details">
+              <h4>{{ loan.book_title }}</h4>
+              <p class="loan-meta">
+                {% if loan.status == 'returned' %}
+                  <span class="status-returned">Devolvido</span>
+                  em {{ loan.return_date|date:"d/m/Y" }}
+                {% elif loan.status == 'overdue' %}
+                  <span class="status-overdue">Atrasado</span>
+                  - Venceu em {{ loan.due_date|date:"d/m/Y" }}
+                {% else %}
+                  <span class="status-active">Ativo</span>
+                  - Vence em {{ loan.due_date|date:"d/m/Y" }}
+                {% endif %}
+              </p>
+              <p class="loan-date">Retirado em {{ loan.start_date|date:"d/m/Y" }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination Controls -->
+      {% if loans_page.has_other_pages %}
+      <div class="loans-pagination">
+        <div class="pagination-controls">
+          {% if loans_page.has_previous %}
+            <a href="?loans_page={{ loans_page.previous_page_number }}" class="pagination-btn pagination-prev">‹ Anterior</a>
+          {% endif %}
+          
+          <span class="pagination-info">
+            Página {{ loans_page.number }} de {{ loans_page.paginator.num_pages }}
+          </span>
+          
+          {% if loans_page.has_next %}
+            <a href="?loans_page={{ loans_page.next_page_number }}" class="pagination-btn pagination-next">Próxima ›</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" width="64" style="opacity:0.3">
+        <p>Você ainda não realizou nenhum empréstimo.</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

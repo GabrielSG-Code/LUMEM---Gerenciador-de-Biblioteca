@@ -201,4 +201,3 @@ git push origin feature/nome-da-funcionalidade
 ## 📄 Licença
 
 Este projeto é de uso acadêmico — Universidade Salvador (UNIFACS).
-testando

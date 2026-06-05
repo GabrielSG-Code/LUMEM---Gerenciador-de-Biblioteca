@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil - {{ user.username }} - LUMEN{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+  <div class="messages-container" style="max-width: 800px; margin: 0 auto 24px;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="profile-container">
+  <div class="profile-header">
+    <div class="profile-avatar {% if user.role == 'librarian' %}profile-avatar-librarian{% elif user.role == 'admin' %}profile-avatar-admin{% endif %}">
+      <img src="{{ profile_icon }}" alt="Profile" class="avatar-img">
+    </div>
+    <div class="profile-info">
+      <h1>{{ user.get_full_name|default:user.username }}</h1>
+      <p class="profile-username">@{{ user.username }}</p>
+      <p class="profile-email">{{ user.email }}</p>
+      <span class="profile-role badge-{{ user.role|lower }}">{{ user.get_role_display }}</span>
+    </div>
+  </div>
+
+  <div class="profile-content">
+    <!-- Statistics Cards (Only for readers) -->
+    {% if user.role == 'reader' %}
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <img src="https://cdn-icons-png.flaticon.com/512/16445/16445661.png" alt="Active Loans">
+        </div>
+        <div class="stat-info">
+          <h3>{{ stats.active_loans }}</h3>
+          <p>Empréstimos Ativos</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">
+          <img src="https://cdn-icons-png.flaticon.com/512/3861/3861478.png" alt="Total Loans">
+        </div>
+        <div class="stat-info">
+          <h3>{{ stats.total_loans }}</h3>
+          <p>Total de Empréstimos</p>
+        </div>
+      </div>
+      
+      <div class="stat-card {% if stats.overdue_loans > 0 %}stat-warning{% endif %}">
+        <div class="stat-icon">
+          <img src="https://cdn-icons-png.flaticon.com/512/6117/6117066.png" alt="Overdue Loans">
+        </div>
+        <div class="stat-info">
+          <h3>{{ stats.overdue_loans }}</h3>
+          <p>Empréstimos Atrasados</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+
+    <!-- Account Settings Section -->
+    <div class="settings-section">
+      <h2>Configurações da Conta</h2>
+      
+      <!-- Change Password -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/3064/3064197.png" alt="Password" class="setting-icon">
+            <span>Alterar Senha</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="setting-content" id="password-section">
+          {% if form_errors.password %}
+            <div class="form-errors">
+              {% if form_errors.password.current_password %}
+                <div class="alert alert-danger">{{ form_errors.password.current_password }}</div>
+              {% elif form_errors.password.new_password %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.password.new_password }}</div>
+              {% else %}
+                {% for field, errors in form_errors.password.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="password">
+            
+            <div class="form-group">
+              <label for="{{ password_form.old_password.id_for_label }}">{{ password_form.old_password.label }}</label>
+              <div class="password-input-container">
+                {{ password_form.old_password }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.old_password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ password_form.new_password1.id_for_label }}">{{ password_form.new_password1.label }}</label>
+              <div class="password-input-container">
+                {{ password_form.new_password1 }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.new_password1.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ password_form.new_password2.id_for_label }}">{{ password_form.new_password2.label }}</label>
+              <div class="password-input-container">
+                {{ password_form.new_password2 }}
+                <button type="button" class="password-toggle" data-target="{{ password_form.new_password2.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Senha</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Email -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="Email" class="setting-icon">
+            <span>Alterar Email</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="setting-content" id="email-section">
+          {% if form_errors.email %}
+            <div class="form-errors">
+              {% if form_errors.email.current_password %}
+                <div class="alert alert-danger">{{ form_errors.email.current_password }}</div>
+              {% elif form_errors.email.new_email %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.email.new_email }}</div>
+              {% else %}
+                {% for field, errors in form_errors.email.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="email">
+            
+            <div class="form-group">
+              <label>Email Atual</label>
+              <input type="text" value="{{ user.email }}" class="form-control" disabled>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ email_form.new_email.id_for_label }}">{{ email_form.new_email.label }}</label>
+              {{ email_form.new_email }}
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ email_form.password.id_for_label }}">{{ email_form.password.label }}</label>
+              <div class="password-input-container">
+                {{ email_form.password }}
+                <button type="button" class="password-toggle" data-target="{{ email_form.password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Email</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Username -->
+      <div class="setting-item">
+        <div class="setting-header">
+          <div class="setting-title">
+            <img src="https://cdn-icons-png.flaticon.com/512/456/456283.png" alt="Username" class="setting-icon">
+            <span>Alterar Nome de Usuário</span>
+          </div>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="setting-content" id="username-section">
+          {% if form_errors.username %}
+            <div class="form-errors">
+              {% if form_errors.username.current_password %}
+                <div class="alert alert-danger">{{ form_errors.username.current_password }}</div>
+              {% elif form_errors.username.new_username %}
+                <div class="alert alert-danger" style="white-space: pre-line;">{{ form_errors.username.new_username }}</div>
+              {% else %}
+                {% for field, errors in form_errors.username.items %}
+                  {% for error in errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+          
+          <form method="post" class="setting-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="username">
+            
+            <div class="form-group">
+              <label>Nome de Usuário Atual</label>
+              <input type="text" value="{{ user.username }}" class="form-control" disabled>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ username_form.new_username.id_for_label }}">{{ username_form.new_username.label }}</label>
+              <div class="username-input-container">
+                {{ username_form.new_username }}
+                <div class="username-availability-indicator" id="username-availability">
+                  <span class="availability-icon"></span>
+                  <span class="availability-text"></span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="{{ username_form.password.id_for_label }}">{{ username_form.password.label }}</label>
+              <div class="password-input-container">
+                {{ username_form.password }}
+                <button type="button" class="password-toggle" data-target="{{ username_form.password.id_for_label }}">
+                  <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-save">Alterar Nome de Usuário</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Network Status Indicator -->
+<div class="network-status" id="network-status">
+  <span class="status-icon">📡</span>
+  <span class="status-text">Sem conexão</span>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/profile.js' %}"></script>
+{% endblock %}

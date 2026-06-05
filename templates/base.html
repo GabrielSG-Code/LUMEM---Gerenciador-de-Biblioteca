@@ -1,12 +1,414 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUMEN</title>
+    <title>{% block title %}LUMEN - Biblioteca{% endblock %}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/short-logo.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/short-logo.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'images/short-logo.png' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary-color: #6396ff; 
+            --secondary-color: #4d7de8;
+            --bg: #f0f3fb;
+            --ink: #1e2a45;
+            --muted: #6b7a99;
+            --accent: #6396ff;
+            --blue-nav: #6396ff;
+            --blue-light: #85adff;
+            --blue-hover: #4d7de8;
+            --white: #ffffff;
+        }
+        
+        body { 
+            background-color: var(--bg); 
+            font-family: 'DM Sans', sans-serif;
+            padding-top: 70px;
+        }
+
+        /* Responsive padding adjustments */
+        @media (max-width: 991px) {
+            body {
+                padding-top: 60px;
+            }
+            .navbar {
+                padding: 6px 0;
+            }
+            .navbar-brand img {
+                height: 64px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                padding-top: 55px;
+            }
+            .navbar {
+                padding: 4px 0;
+            }
+            .navbar-brand img {
+                height: 56px;
+            }
+        }
+        
+        /* ── Updated Navbar ── */
+        .navbar {
+            background: var(--blue-nav) !important;
+            border-bottom: none;
+            box-shadow: 0 2px 12px rgba(30,42,69,.25);
+            padding: 8px 0;
+            transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            width: 100%;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 1.15rem !important;
+            font-weight: 700 !important;
+            color: var(--white) !important;
+            letter-spacing: 0.06em;
+            text-decoration: none !important;
+        }
+
+        .navbar-brand img {
+            height: 76px;
+            width: auto;
+        }
+        
+        .navbar-nav .nav-link {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: rgba(255,255,255,.85) !important;
+            padding: 8px 16px !important;
+            margin: 0 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: #fff !important;
+        }
+        
+        .navbar-nav .nav-link.active {
+            color: #fff !important;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        
+        .navbar-toggler {
+            border: none !important;
+            padding: 4px 8px;
+        }
+        
+        .navbar-toggler:focus {
+            box-shadow: none !important;
+        }
+        
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+        
+        /* ── Register Button ── */
+        .btn-register {
+            background: var(--white) !important;
+            color: var(--blue-nav) !important;
+            border: none !important;
+            padding: 8px 20px !important;
+            border-radius: 6px !important;
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 0.9rem !important;
+            font-weight: 500 !important;
+            letter-spacing: 0.03em !important;
+            margin-left: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .btn-register:hover {
+            background: var(--blue-light) !important;
+            color: var(--white) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 150, 255, 0.3);
+        }
+        
+        /* ── Logout Link ── */
+        .logout-link {
+            color: rgba(255,255,255,.7) !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .logout-link:hover {
+            color: #fff !important;
+        }
+        
+        .btn-primary { background-color: var(--primary-color); border: none; }
+        .btn-primary:hover { background-color: var(--secondary-color); }
+        
+        /* ── Profile Avatar & Dropdown Styles ── */
+        .profile-link {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .profile-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            padding: 6px;
+            transition: all 0.2s;
+        }
+        
+        .profile-avatar-nav-librarian {
+            background: #3dbe78 !important;
+        }
+        
+        .profile-avatar-nav-admin {
+            background: #6c757d !important;
+        }
+        
+        .profile-link:hover .profile-avatar {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .profile-link:hover .profile-avatar-nav-librarian {
+            background: #2fa666 !important;
+            transform: scale(1.05);
+        }
+        
+        .profile-link:hover .profile-avatar-nav-admin {
+            background: #5a6169 !important;
+            transform: scale(1.05);
+        }
+        
+        .dropdown-menu {
+            border-radius: 12px !important;
+            border: none !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+            padding: 8px !important;
+            margin-top: 8px !important;
+            min-width: 220px;
+        }
+        
+        .dropdown-item {
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            margin: 2px 0 !important;
+            transition: all 0.2s !important;
+            display: flex !important;
+            align-items: center !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .dropdown-item:hover {
+            background: var(--blue-light) !important;
+            color: white !important;
+            transform: translateX(4px) !important;
+        }
+        
+        .dropdown-item svg {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .dropdown-item:hover svg {
+            opacity: 1;
+        }
+        
+        .dropdown-header {
+            padding: 12px 16px 8px !important;
+        }
+        
+        .user-info {
+            text-align: left;
+        }
+        
+        .user-info strong {
+            display: block;
+            color: var(--dark-text, #1e2a45);
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        .user-info small {
+            color: var(--gray-text, #6b7a99);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .logout-item {
+            color: #dc3545 !important;
+        }
+        
+        .logout-item:hover {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+        
+        .dropdown-divider {
+            margin: 8px 0 !important;
+            opacity: 0.3 !important;
+        }
+        
+        /* Quick Links Dropdown */
+        .nav-link.dropdown-toggle {
+            display: flex !important;
+            align-items: center;
+        }
+        
+        /* Responsive dropdown adjustments */
+        @media (max-width: 991px) {
+            .dropdown-menu {
+                position: static !important;
+                float: none !important;
+                width: auto !important;
+                margin-top: 0 !important;
+                background-color: rgba(255,255,255,0.95) !important;
+                border: none !important;
+                border-radius: 8px !important;
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.15) !important;
+            }
+            
+            .dropdown-item:hover {
+                transform: none !important;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    {% block content %}
-    {% endblock %}
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <img src="{% static 'images/logo.png' %}" alt="Lumen Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if request.resolver_match.url_name != 'home' %}
+                        {% if not user.is_authenticated or user.role != 'reader' or request.resolver_match.url_name != 'browse_collection' %}
+                            <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
+                        {% endif %}
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        <!-- Quick Links Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="quickLinksDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+                                    <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+                                </svg>
+                                Menu
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="quickLinksDropdown">
+                                {% if user.role == 'reader' and request.resolver_match.url_name == 'browse_collection' %}
+                                    <li><a class="dropdown-item" href="/">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                            <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/>
+                                        </svg>
+                                        Início
+                                    </a></li>
+                                {% endif %}
+                                {% if request.resolver_match.url_name != 'browse_collection' %}
+                                    <li><a class="dropdown-item" href="{% url 'browse_collection' %}">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                        </svg>
+                                        Explorar Acervo
+                                    </a></li>
+                                {% endif %}
+                                {% if user.role != 'reader' %}
+                                    {% if request.resolver_match.url_name != 'manage_loans' %}
+                                        <li><a class="dropdown-item" href="{% url 'manage_loans' %}">
+                                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                                <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                            </svg>
+                                            Gerenciar Empréstimos
+                                        </a></li>
+                                    {% endif %}
+                                {% endif %}
+                                {% if user.is_superuser or user.role == 'admin' %}
+                                    {% if request.resolver_match.url_name != 'manage_users' %}
+                                        <li><a class="dropdown-item" href="{% url 'manage_users' %}">
+                                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                                                <path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/>
+                                                <path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
+                                            </svg>
+                                            Gerenciar Usuários
+                                        </a></li>
+                                    {% endif %}
+                                {% endif %}
+                            </ul>
+                        </li>
+                        
+                        <!-- Profile Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link profile-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="{{ profile_icon }}" alt="Profile" class="profile-avatar {% if user.role == 'librarian' %}profile-avatar-nav-librarian{% elif user.role == 'admin' %}profile-avatar-nav-admin{% endif %}">
+                                {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                                <li class="dropdown-header">
+                                    <div class="user-info">
+                                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                        <small>{{ user.get_role_display }}</small>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% if request.resolver_match.url_name != 'profile' %}
+                                    <li><a class="dropdown-item" href="{% url 'profile' %}">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                        </svg>
+                                        Meu Perfil
+                                    </a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item logout-item" href="{% url 'logout' %}">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                                        <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                        <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                    </svg>
+                                    Sair
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        {% if request.resolver_match.url_name != 'login' %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Entrar</a></li>
+                        {% endif %}
+                        {% if request.resolver_match.url_name != 'register' %}
+                            <li class="nav-item"><a class="btn-register" href="{% url 'register' %}">Cadastrar</a></li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

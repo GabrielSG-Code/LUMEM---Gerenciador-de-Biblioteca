@@ -1,0 +1,170 @@
+/* Shared authentication styles for login and register pages */
+:root {
+  --blue-nav:  #6396ff;
+  --blue-btn:  #6396ff;
+  --blue-hover:#4d7de8;
+  --blue-field:#91c8f5;
+  --dark-text: #1e3a7a;
+  --gray-text: #6b7a99;
+  --bg:        #dce5f5;
+  --white:     #ffffff;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --shadow:    0 4px 32px rgba(99,150,255,.13);
+}
+
+.auth-container {
+  min-height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--bg);
+}
+
+.login-card, .register-card {
+  background: var(--white);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 64px 56px 52px;
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: none;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  margin-bottom: 36px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--dark-text);
+  margin-left: 2px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.field input {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid #dce3f0;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  color: var(--dark-text);
+  transition: all 0.2s ease;
+  background: var(--white);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--blue-field);
+  box-shadow: 0 0 0 3px rgba(99,150,255,.15);
+}
+
+.field input::placeholder {
+  color: #aab5d0;
+  font-weight: 400;
+}
+
+.actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-login, .btn-register {
+  width: 100%;
+  padding: 14px 28px;
+  background: var(--blue-btn);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-transform: none;
+}
+
+.btn-login:hover, .btn-register:hover {
+  background: var(--blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(99,150,255,.3);
+}
+
+.alternative {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--gray-text);
+  font-family: 'DM Sans', sans-serif;
+  margin-top: 8px;
+}
+
+.alternative a {
+  color: var(--blue-btn);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.alternative a:hover {
+  color: var(--blue-hover);
+  text-decoration: underline;
+}
+
+/* Form error styles */
+.field .invalid-feedback, .field .errorlist {
+  color: #dc3545;
+  font-size: 0.875em;
+  margin-top: 0.25rem;
+}
+
+.field input.is-invalid {
+  border-color: #dc3545;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .login-card, .register-card {
+    padding: 48px 32px 40px;
+    margin: 20px;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 28px;
+  }
+  
+  .auth-container {
+    padding: 20px 10px;
+  }
+}

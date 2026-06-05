@@ -1,11 +1,338 @@
 {% extends 'base.html' %}
 
+{% block title %}Cadastre-se - LUMEN{% endblock %}
+
 {% block content %}
-<h2>Criar conta</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Cadastrar</button>
-</form>
-<p>Já tem conta? <a href="{% url 'login' %}">Entrar</a></p>
+<style>
+  :root {
+    --blue-nav:  #6396ff;
+    --blue-btn:  #6396ff;
+    --blue-hover:#4d7de8;
+    --blue-field:#91c8f5;
+    --dark-text: #1e3a7a;
+    --gray-text: #6b7a99;
+    --bg:        #dce5f5;
+    --white:     #ffffff;
+    --radius:    14px;
+    --radius-sm: 8px;
+    --shadow:    0 4px 32px rgba(99,150,255,.13);
+  }
+
+  .auth-container {
+    min-height: calc(100vh - 150px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: var(--bg);
+  }
+
+  .register-card {
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: 64px 56px 52px;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-text);
+    margin-bottom: 36px;
+    text-align: center;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .fields {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .input-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .input-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px; 
+    height: 16px;
+    color: var(--blue-field);
+  }
+
+  .input-wrap input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--blue-field);
+    border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .92rem;
+    color: var(--dark-text);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    background: #fff;
+  }
+
+  .input-wrap.has-icon input { 
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 34px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--blue-field);
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+  }
+
+  .password-toggle:hover {
+    color: var(--blue-btn);
+  }
+
+  .password-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .input-wrap input::placeholder { 
+    color: var(--blue-field); 
+  }
+
+  .input-wrap input:focus {
+    border-color: var(--blue-btn);
+    box-shadow: 0 0 0 3px rgba(99,150,255,.14);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--blue-btn);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, box-shadow .2s;
+    margin-bottom: 20px;
+  }
+
+  .btn-primary:hover {
+    background: var(--blue-hover);
+    box-shadow: 0 4px 14px rgba(99,150,255,.35);
+  }
+
+  .footer-text {
+    font-size: .88rem;
+    color: var(--gray-text);
+    text-align: center;
+    margin: 0;
+  }
+
+  .footer-text a {
+    color: var(--blue-btn);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .footer-text a:hover { 
+    color: var(--blue-hover); 
+  }
+
+  .error-messages {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .alert {
+    background: #ffe6e6;
+    color: #cc0000;
+    border: 1px solid #ffcccc;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: .88rem;
+    margin-bottom: 8px;
+  }
+
+  .errorlist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #cc0000;
+    font-size: .85rem;
+    margin-top: 4px;
+  }
+
+  .errorlist li {
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 991px) {
+    .auth-container {
+      min-height: calc(100vh - 140px);
+    }
+  }
+
+  @media (max-width: 576px) {
+    .auth-container {
+      min-height: calc(100vh - 130px);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .register-card {
+      padding: 48px 32px 40px;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<div class="auth-container">
+  <div class="register-card">
+    <h1>Criar conta</h1>
+    
+    {% if messages %}
+      <div class="error-messages">
+        {% for message in messages %}
+          <div class="alert">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    <form method="post">
+      {% csrf_token %}
+      <div class="fields">
+        <div class="input-wrap">
+          {{ form.username }}
+        </div>
+        <div class="input-wrap">
+          {{ form.email }}
+        </div>
+        <div class="input-wrap has-icon">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          {{ form.password1 }}
+          <button type="button" class="password-toggle" onclick="togglePassword('password1')">
+            <svg id="eyeIcon1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-wrap has-icon">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          {{ form.password2 }}
+          <button type="button" class="password-toggle" onclick="togglePassword('password2')">
+            <svg id="eyeIcon2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        
+        {% if form.non_field_errors %}
+          <div class="errorlist">
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </div>
+        {% endif %}
+        
+        {% for field in form %}
+          {% if field.errors %}
+            <div class="errorlist">
+              {% for error in field.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      
+      <button type="submit" class="btn-primary">Cadastrar</button>
+    </form>
+    
+    <p class="footer-text">Já possui uma conta? <a href="{% url 'login' %}">Entrar</a></p>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set placeholders for Django form fields
+    const usernameField = document.querySelector('input[name="username"]');
+    const emailField = document.querySelector('input[name="email"]');
+    const password1Field = document.querySelector('input[name="password1"]');
+    const password2Field = document.querySelector('input[name="password2"]');
+    
+    if (usernameField) {
+        usernameField.placeholder = 'Nome de usuário';
+    }
+    
+    if (emailField) {
+        emailField.placeholder = 'Email';
+        emailField.type = 'email';
+    }
+    
+    if (password1Field) {
+        password1Field.placeholder = 'Senha';
+    }
+    
+    if (password2Field) {
+        password2Field.placeholder = 'Confirme sua senha';
+    }
+});
+
+// Toggle password visibility
+function togglePassword(fieldName) {
+    const passwordField = document.querySelector(`input[name="${fieldName}"]`);
+    const eyeIcon = document.getElementById(fieldName === 'password1' ? 'eyeIcon1' : 'eyeIcon2');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        eyeIcon.innerHTML = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+        `;
+    } else {
+        passwordField.type = 'password';
+        eyeIcon.innerHTML = `
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+        `;
+    }
+}
+</script>
 {% endblock %}

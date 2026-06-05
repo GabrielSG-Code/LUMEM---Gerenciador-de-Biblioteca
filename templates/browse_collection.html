@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/browse_collection.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="lumen-browse">
+
+  <!-- Header -->
+  <div class="browse-header">
+    <h1>Explorar Acervo</h1>
+    <p>Descubra nossa coleção completa de livros disponíveis</p>
+  </div>
+
+  <!-- Messages Display -->
+  {% if messages %}
+    <div class="messages-container" style="max-width: 1100px; margin: 0 auto 24px;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="margin-bottom: 12px;">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Stats Bar -->
+  {% if user.role != 'reader' %}
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-label">Total de livros</span>
+      <span class="stat-value">{{ stats.total_books|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Disponíveis</span>
+      <span class="stat-value stat-value-positive">{{ stats.available|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Emprestados</span>
+      <span class="stat-value">{{ stats.borrowed|default:"0" }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Atrasados</span>
+      <span class="stat-value stat-value-negative">{{ stats.overdue|default:"0" }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Search and filters -->
+  <div class="browse-controls">
+    <form method="GET" style="display: contents;">
+      <div class="search-box">
+        <input type="text" name="search" placeholder="Buscar por título ou autor..." value="{{ search_query }}" id="searchInput">
+      </div>
+      <div class="category-dropdown-box">
+        <select name="category" id="categorySelect" onchange="this.form.submit()">
+          <option value="all" {% if category_filter == 'all' %}selected{% endif %}>Todas as categorias</option>
+          {% for category in categories %}
+            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+    <div style="display: flex; gap: 12px;">
+      {% if user.role != 'reader' %}
+      <div class="dropdown">
+        <button class="add-book-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+          </svg>
+          Funções
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button type="button" class="dropdown-item" onclick="openAddBookModal()">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+              </svg>
+              Adicionar Livros
+            </button>
+          </li>
+          <li>
+            <button type="button" class="dropdown-item" onclick="openEditBookModal()">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/>
+              </svg>
+              Editar Livro
+            </button>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Collection Statistics -->
+  <div style="max-width: 1100px; margin: 0 auto 24px; text-align: center; color: var(--muted); font-size: 0.9rem;">
+    Mostrando {{ books.start_index }} - {{ books.end_index }} de {{ total_books }} livros únicos ({{ available_exemplars }}/{{ total_exemplars }} exemplares disponíveis)
+  </div>
+
+  <!-- Books grid -->
+  <div class="books-grid" id="booksGrid">
+    {% for book in books %}
+      <div class="book-container {{ book.category_lower|default:'outros' }}" data-category="{{ book.category }}" data-title="{{ book.title|lower }}" data-author="{{ book.author|lower }}" onclick="openBookDetailModal('{{ book.title|escapejs }}', '{{ book.author|escapejs }}', '{{ book.category }}', {{ book.year|default:"2010" }}, '{{ book.publisher|default:"Editora Exemplo" }}', {{ book.total_count }}, '{{ book.description|default:"Esta é uma descrição detalhada para o livro"|escapejs }}', {{ book.available_count }}, {{ book.id|default:1 }})">
+        
+        {% if book.available %}
+          <div class="status-badge available">{{ book.availability_text }}</div>
+        {% else %}
+          <div class="status-badge unavailable">{{ book.availability_text }}</div>
+        {% endif %}
+
+        <div class="book-pages"></div>
+
+        <div class="book-cover {{ book.category_lower|default:'outros' }}">
+          <div>
+            <div class="book-title">{{ book.title }}</div>
+            <div class="book-author">{{ book.author }}</div>
+          </div>
+
+          <div class="book-illustration">
+            <img src="{{ book.icon_url }}" alt="{{ book.category }}" class="category-icon" data-category="{{ book.category_lower }}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1146/1146315.png';">
+          </div>
+
+          <div class="book-category">{{ book.get_category_display|default:book.category }}</div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="no-results">
+        <img src="https://cdn-icons-png.flaticon.com/512/3145/3145765.png" width="64">
+        <p>Nenhum livro encontrado para a busca realizada.</p>
+      </div>
+    {% endfor %}
+    
+  </div>
+
+  <!-- Pagination -->
+  {% if books.has_other_pages %}
+  <div style="max-width: 1100px; margin: 32px auto; display: flex; justify-content: center;">
+    <div style="display: flex; gap: 8px; align-items: center;">
+      {% if books.has_previous %}
+        <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ books.previous_page_number }}" 
+           style="padding: 8px 12px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">‹ Anterior</a>
+      {% endif %}
+      
+      {% for num in books.paginator.page_range %}
+        {% if books.number == num %}
+          <span style="padding: 8px 12px; background: var(--ink); color: white; border-radius: 6px; font-size: 0.9rem; font-weight: 500;">{{ num }}</span>
+        {% elif num > books.number|add:'-3' and num < books.number|add:'3' %}
+          <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ num }}" 
+             style="padding: 8px 12px; background: #f8f9fa; color: var(--ink); text-decoration: none; border-radius: 6px; font-size: 0.9rem; transition: background 0.2s;" 
+             onmouseover="this.style.background='#e9ecef'" 
+             onmouseout="this.style.background='#f8f9fa'">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      
+      {% if books.has_next %}
+        <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if category_filter != 'all' %}category={{ category_filter }}&{% endif %}page={{ books.next_page_number }}" 
+           style="padding: 8px 12px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">Próxima ›</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Add Book Modal -->
+  <div id="addBookModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeAddBookModal()">&times;</button>
+      
+      <h2>Adicionar Novo Livro</h2>
+      <p>Preencha as informações para adicionar um novo livro ao acervo</p>
+      
+      <form class="book-form" method="post" action="{% url 'add_book' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="bookTitle">Título *</label>
+          <input type="text" id="bookTitle" name="title" required placeholder="Ex: O Nome do Vento">
+        </div>
+        
+        <div class="form-group">
+          <label for="bookAuthor">Autor *</label>
+          <input type="text" id="bookAuthor" name="author" required placeholder="Ex: Patrick Rothfuss">
+        </div>
+        
+        <div class="form-group">
+          <label for="bookDescription">Descrição</label>
+          <textarea id="bookDescription" name="description" placeholder="Breve descrição do livro..."></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookYear">Ano de Lançamento</label>
+            <input type="number" id="bookYear" name="release_year" min="1000" max="2024" placeholder="2007">
+          </div>
+          
+          <div class="form-group">
+            <label for="bookCategory">Categoria *</label>
+            <select id="bookCategory" name="category" required>
+              <option value="">Selecione uma categoria</option>
+              {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookPublisher">Editora</label>
+            <input type="text" id="bookPublisher" name="publisher" placeholder="Ex: Arqueiro">
+          </div>
+          
+          <div class="form-group">
+            <label for="bookExemplary">Número de Exemplares *</label>
+            <input type="number" id="bookExemplary" name="exemplary" min="1" required placeholder="1">
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeAddBookModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="submitBtn">
+            <svg id="submitIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span id="submitText">Adicionar Livro</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Book Detail Modal -->
+  <div id="bookDetailModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeBookDetailModal()">&times;</button>
+      
+      <h2 id="detailTitle">Título do Livro</h2>
+      <p id="detailAuthor">por Autor</p>
+      
+      <div class="book-details">
+        <div class="detail-row">
+          <div class="detail-item">
+            <strong>Ano de Lançamento:</strong>
+            <span id="detailYear">-</span>
+          </div>
+          <div class="detail-item">
+            <strong>Editora:</strong>
+            <span id="detailPublisher">-</span>
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-item">
+            <strong>Categoria:</strong>
+            <span id="detailCategory">-</span>
+          </div>
+          <div class="detail-item">
+            <strong>Exemplares:</strong>
+            <span id="detailExemplary">-</span>
+          </div>
+        </div>
+        
+        <div class="detail-description">
+          <strong>Descrição:</strong>
+          <p id="detailDescription">Descrição não disponível.</p>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeBookDetailModal()">Fechar</button>
+        {% if user.role != 'reader' %}
+        <button type="button" class="btn-primary" onclick="borrowBook()">Emprestar Livro</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Book Modal -->
+  <div id="editBookModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeEditBookModal()">&times;</button>
+      
+      <h2>Editar Livro</h2>
+      <p>Modifique as informações do livro no acervo</p>
+      
+      <form class="book-form" id="editBookForm">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="editBookTitle">Título *</label>
+          <div class="search-input-container">
+            <input type="text" id="editBookTitle" name="title" required autocomplete="off" oninput="searchExistingBooks(this.value)">
+            <div id="bookSearchResults" class="search-results-dropdown" style="display: none;"></div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="editBookAuthor">Autor *</label>
+          <input type="text" id="editBookAuthor" name="author" required>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editBookYear">Ano de Lançamento</label>
+            <input type="number" id="editBookYear" name="year" min="1000" max="2024">
+          </div>
+          
+          <div class="form-group">
+            <label for="editBookPublisher">Editora</label>
+            <input type="text" id="editBookPublisher" name="publisher">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editBookCategory">Categoria *</label>
+            <input type="text" id="editBookCategory" name="category" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="editBookCopies">Exemplares *</label>
+            <input type="number" id="editBookCopies" name="copies" min="1" required>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeEditBookModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="editSubmitBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+            </svg>
+            <span>Salvar Alterações</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Category icons from CSV
+const categoryIcons = {{ category_icons_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Update each book icon directly
+    document.querySelectorAll('.book-cover').forEach(bookCard => {
+        const categoryElement = bookCard.querySelector('.book-category');
+        const imgElement = bookCard.querySelector('.category-icon');
+        
+        if (categoryElement && imgElement && categoryIcons[categoryElement.textContent.trim()]) {
+            imgElement.src = categoryIcons[categoryElement.textContent.trim()];
+        }
+    });
+});
+</script>
+<script src="{% static 'js/browse_collection.js' %}"></script>
+{% endblock %}
