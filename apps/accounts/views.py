@@ -10,6 +10,7 @@ from datetime import timedelta
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
 from django.template.loader import render_to_string
+from django.db import transaction
 import json
 from datetime import date
 
@@ -19,7 +20,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm
+from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm, get_current_year, get_max_book_year, get_max_book_copies, get_default_book_copies
 from .models import Livros, User, Emprestimo, LoanConfig
 
 
@@ -120,8 +121,9 @@ def browse_collection(request):
 
     from django.db.models import Count, Case, When, IntegerField
 
+    # Fast and simple grouping - group only by title and author for consistency
     unique_books_query = livros_query.values(
-        'titulo', 'autor', 'genero', 'ano', 'editora', 'descricao'
+        'titulo', 'autor'
     ).annotate(
         total_count=Count('id_livro'),
         available_count=Count(
@@ -138,7 +140,13 @@ def browse_collection(request):
 
     # Calculate stats for the stats bar
     from django.utils import timezone
-    borrowed_exemplars = livros_query.exclude(status_livro__iexact='disponível').count()
+    
+    # Count all loans (both active and completed) instead of just borrowed books
+    total_loans_count = 0
+    try:
+        total_loans_count = Emprestimo.objects.count()
+    except:
+        total_loans_count = 0
     
     # Calculate overdue loans
     overdue_count = 0
@@ -154,7 +162,7 @@ def browse_collection(request):
     stats = {
         'total_books': total_unique_books,
         'available': available_exemplars,
-        'borrowed': borrowed_exemplars,
+        'borrowed': total_loans_count,  # Now shows total loans instead of borrowed books
         'overdue': overdue_count
     }
 
@@ -164,14 +172,32 @@ def browse_collection(request):
 
     current_page_books = unique_books_query[start_index:end_index]
 
+    # Get representative books for the current page in a single query
+    current_page_titles_authors = [(book['titulo'], book['autor']) for book in current_page_books]
+    
+    if current_page_titles_authors:
+        # Build Q objects for filtering
+        q_objects = Q()
+        for titulo, autor in current_page_titles_authors:
+            q_objects |= Q(titulo=titulo, autor=autor)
+        
+        rep_books_query = livros_query.filter(q_objects).order_by('titulo', 'autor', 'id_livro')
+    else:
+        rep_books_query = livros_query.none()
+    
+    # Create a lookup dict for representative books (first book per title/author)
+    rep_books_dict = {}
+    for book in rep_books_query:
+        key = (book.titulo, book.autor)
+        if key not in rep_books_dict:
+            rep_books_dict[key] = book
+
     books_list = []
     for book_data in current_page_books:
-        representative_book = livros_query.filter(
-            titulo=book_data['titulo'],
-            autor=book_data['autor']
-        ).first()
-
-        category_name = book_data['genero'] or 'Outros'
+        # Get the representative book from the dict
+        representative_book = rep_books_dict.get((book_data['titulo'], book_data['autor']))
+        
+        category_name = representative_book.genero or 'Outros' if representative_book else 'Outros'
         
         # Get the appropriate icon for the category with better matching
         icon_url = None
@@ -197,9 +223,9 @@ def browse_collection(request):
             'category': category_name,
             'category_lower': category_name.lower(),
             'icon_url': icon_url,
-            'year': book_data['ano'],
-            'publisher': book_data['editora'],
-            'description': book_data['descricao'],
+            'year': representative_book.ano if representative_book else None,
+            'publisher': representative_book.editora if representative_book else '',
+            'description': representative_book.descricao if representative_book else '',
             'total_count': book_data['total_count'],
             'available_count': book_data['available_count'],
             'available': book_data['available_count'] > 0,
@@ -274,7 +300,11 @@ def browse_collection(request):
         'total_books': total_unique_books,
         'total_exemplars': total_exemplars,
         'available_exemplars': available_exemplars,
-        'stats': stats
+        'stats': stats,
+        'current_year': get_current_year(),
+        'max_book_year': get_max_book_year(),
+        'max_book_copies': get_max_book_copies(),
+        'default_book_copies': get_default_book_copies()
     }
 
     return render(request, 'browse_collection.html', context)
@@ -390,63 +420,77 @@ def edit_book(request, book_id):
             'ano': book.ano,
             'editora': book.editora,
             'genero': book.genero,
+            'descricao': book.descricao,
             'total_count': total_copies
         }
         
         if request.method == 'POST':
             form = EditBookForm(book_data, request.POST)
             if form.is_valid():
-                # Update all books with same title and author
-                title = form.cleaned_data['title']
-                author = form.cleaned_data['author']
-                year = form.cleaned_data['year']
-                publisher = form.cleaned_data['publisher']
-                category = form.cleaned_data['category']
-                new_copies = form.cleaned_data['copies']
-                
-                # Update existing books
-                same_books.update(
-                    titulo=title,
-                    autor=author,
-                    ano=year,
-                    editora=publisher,
-                    genero=category
-                )
-                
-                # Handle copies count change
-                current_copies = same_books.count()
-                if new_copies > current_copies:
-                    # Add more copies
-                    copies_to_add = new_copies - current_copies
-                    for _ in range(copies_to_add):
-                        Livros.objects.create(
+                try:
+                    with transaction.atomic():
+                        # Update all books with same title and author
+                        title = form.cleaned_data['title']
+                        author = form.cleaned_data['author']
+                        year = form.cleaned_data['year']
+                        publisher = form.cleaned_data['publisher']
+                        category = form.cleaned_data['category']
+                        description = form.cleaned_data['description']
+                        new_copies = form.cleaned_data['copies']
+                        
+                        # Handle copies count change BEFORE updating existing books
+                        current_copies = same_books.count()
+                        
+                        # Update existing books
+                        same_books.update(
                             titulo=title,
                             autor=author,
                             ano=year,
                             editora=publisher,
                             genero=category,
-                            status_livro='Disponível'
+                            descricao=description
                         )
-                elif new_copies < current_copies:
-                    # Remove excess copies (only available ones)
-                    copies_to_remove = current_copies - new_copies
-                    available_books = same_books.filter(status_livro='Disponível')
+                        
+                        if new_copies > current_copies:
+                            # Add more copies
+                            copies_to_add = new_copies - current_copies
+                            for _ in range(copies_to_add):
+                                Livros.objects.create(
+                                    titulo=title,
+                                    autor=author,
+                                    ano=year,
+                                    editora=publisher,
+                                    genero=category,
+                                    descricao=description,
+                                    status_livro='Disponível'
+                                )
+                        elif new_copies < current_copies:
+                            # Remove excess copies (only available ones)
+                            # Re-query the books after update to get the correct status
+                            updated_books = Livros.objects.filter(titulo=title, autor=author)
+                            copies_to_remove = current_copies - new_copies
+                            available_books = updated_books.filter(status_livro='Disponível')
+                            
+                            if available_books.count() < copies_to_remove:
+                                return JsonResponse({
+                                    'success': False, 
+                                    'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
+                                })
+                            
+                            # Remove the excess available copies
+                            books_to_delete = available_books[:copies_to_remove]
+                            for book_to_delete in books_to_delete:
+                                book_to_delete.delete()
                     
-                    if available_books.count() < copies_to_remove:
-                        return JsonResponse({
-                            'success': False, 
-                            'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
-                        })
-                    
-                    # Remove the excess available copies
-                    books_to_delete = available_books[:copies_to_remove]
-                    for book_to_delete in books_to_delete:
-                        book_to_delete.delete()
-                
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Livro "{title}" atualizado com sucesso!'
-                })
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Livro "{title}" atualizado com sucesso!'
+                    })
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Erro ao processar solicitação: {str(e)}'
+                    })
             else:
                 # Return form errors
                 errors = []
@@ -997,37 +1041,39 @@ def search_existing_books(request):
     if len(query) < 2:
         return JsonResponse({'results': []})
     
-    # Use the same grouping logic as browse_collection
-    from django.db.models import Count, Case, When, IntegerField
+    # Use the same representative book ID logic as browse_collection
+    from django.db.models import Count, Min
     
     livros_query = Livros.objects.filter(
         Q(titulo__icontains=query) | Q(autor__icontains=query)
     )
     
-    # Group by title and author to get unique book information (same logic as browse_collection)
-    unique_books_query = livros_query.values(
-        'titulo', 'autor', 'genero', 'ano', 'editora'
-    ).annotate(
-        total_count=Count('id_livro')
+    # Get representative books using the same logic as browse_collection
+    representative_books = livros_query.values('titulo', 'autor').annotate(
+        representative_id=Min('id_livro')
     ).order_by('titulo', 'autor')[:10]
     
     results = []
-    for book_data in unique_books_query:
-        # Get a representative book for the ID
-        representative_book = livros_query.filter(
-            titulo=book_data['titulo'],
-            autor=book_data['autor']
-        ).first()
-        
-        results.append({
-            'id': representative_book.id_livro if representative_book else None,
-            'title': book_data['titulo'],
-            'author': book_data['autor'],
-            'category': book_data['genero'] or '',
-            'year': book_data['ano'],
-            'publisher': book_data['editora'] or '',
-            'total_copies': book_data['total_count']
-        })
+    for book_group in representative_books:
+        # Get the representative book
+        representative_book = livros_query.filter(id_livro=book_group['representative_id']).first()
+        if representative_book:
+            # Count total copies for this title/author
+            total_count = livros_query.filter(
+                titulo=book_group['titulo'], 
+                autor=book_group['autor']
+            ).count()
+            
+            results.append({
+                'id': representative_book.id_livro,
+                'title': representative_book.titulo,
+                'author': representative_book.autor,
+                'category': representative_book.genero or '',
+                'year': representative_book.ano,
+                'publisher': representative_book.editora or '',
+                'description': representative_book.descricao or '',
+                'total_copies': total_count
+            })
     
     return JsonResponse({'results': results})
 
