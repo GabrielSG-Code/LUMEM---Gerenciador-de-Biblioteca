@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import MinLengthValidator, MaxLengthValidator
 
 class User(AbstractUser):
     class Role(models.TextChoices):
@@ -7,8 +8,8 @@ class User(AbstractUser):
         LIBRARIAN = 'librarian', 'Bibliotecário'
         READER = 'reader', 'Leitor'
 
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.READER)
-    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=15, choices=Role.choices, default=Role.READER)
+    email = models.EmailField(max_length=320, unique=True)
 
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
@@ -37,9 +38,9 @@ class LoanConfig(models.Model):
 
 class Emprestimo(models.Model):
     id = models.AutoField(primary_key=True)
-    id_usuario = models.CharField(max_length=50, blank=True, null=True)
-    id_livro = models.CharField(max_length=50, blank=True, null=True)
-    id_emprestimo = models.CharField(max_length=50, blank=True, null=True)
+    id_usuario = models.CharField(max_length=20, blank=True, null=True)
+    id_livro = models.CharField(max_length=20, blank=True, null=True)
+    id_emprestimo = models.CharField(max_length=25, blank=True, null=True)
     data_inicio = models.DateField(blank=True, null=True)
     data_entrega = models.DateField(blank=True, null=True)
     data_fim = models.DateField(blank=True, null=True)
@@ -51,16 +52,16 @@ class Emprestimo(models.Model):
 
 class Livros(models.Model):
     id_livro = models.AutoField(primary_key=True)
-    titulo = models.CharField(max_length=255)
-    autor = models.CharField(max_length=255)
+    titulo = models.CharField(max_length=200, validators=[MinLengthValidator(1)])
+    autor = models.CharField(max_length=150, validators=[MinLengthValidator(1)])
     isbn_13 = models.CharField(max_length=13, blank=True, null=True)
     isbn_10 = models.CharField(max_length=10, blank=True, null=True)
-    editora = models.CharField(max_length=255, blank=True, null=True)
+    editora = models.CharField(max_length=100, blank=True, null=True)
     ano = models.IntegerField(blank=True, null=True)
     paginas = models.IntegerField(blank=True, null=True)
-    descricao = models.TextField(blank=True, null=True)
-    genero = models.CharField(max_length=255, blank=True, null=True)
-    status_livro = models.CharField(max_length=50, blank=True, null=True)
+    descricao = models.TextField(max_length=2000, blank=True, null=True)
+    genero = models.CharField(max_length=50, blank=True, null=True)
+    status_livro = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
         managed = True
@@ -68,11 +69,11 @@ class Livros(models.Model):
 
 class Usuarios(models.Model):
     id_usuario = models.AutoField(primary_key=True)
-    username = models.CharField(max_length=255)
-    senha = models.CharField(max_length=255)
-    privilegio = models.CharField(max_length=20, blank=True, null=True)
+    username = models.CharField(max_length=30)
+    senha = models.CharField(max_length=128)
+    privilegio = models.CharField(max_length=15, blank=True, null=True)
     status = models.CharField(max_length=20, blank=True, null=True)
-    email = models.CharField(max_length=255, blank=True, null=True)
+    email = models.CharField(max_length=320, blank=True, null=True)
 
     class Meta:
         managed = True
