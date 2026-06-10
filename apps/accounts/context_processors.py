@@ -1,7 +1,8 @@
 import csv
 import os
 from django.conf import settings
-
+from django.utils import timezone
+from .models import Emprestimo, Livros
 
 def profile_icon(request):
     """
@@ -45,4 +46,80 @@ def profile_icon(request):
     
     return {
         'profile_icon': profile_icon_url
+    }
+
+def loan_due_alerts(request):
+    if not request.user.is_authenticated:
+        return {}
+
+    if request.user.role != 'reader':
+        return {}
+
+    if request.path != '/':
+        return {}
+
+    if request.session.get('loan_alerts_shown'):
+        return {}
+
+    today = timezone.now().date()
+
+    emprestimos = Emprestimo.objects.filter(
+        id_usuario=str(request.user.id),
+        data_fim__isnull=True
+    )
+
+    atrasados = []
+    vence_hoje = []
+    proximos = []
+
+    for emp in emprestimos:
+        if not emp.data_entrega:
+            continue
+
+        try:
+            livro = Livros.objects.get(id_livro=int(emp.id_livro))
+            titulo = livro.titulo
+        except:
+            titulo = f"ID Livro: {emp.id_livro}"
+
+        dias = (emp.data_entrega - today).days
+
+        if dias < 0:
+            atrasados.append({
+                "tipo": "atrasado",
+                "mensagem": (
+                    f"Aviso: O empréstimo do livro '{titulo}' está em atraso. "
+                    f"Dias em atraso: {abs(dias)}. Realize a devolução para "
+                    f"regularizar sua situação e voltar a pegar novos empréstimos."
+                )
+            })
+
+        elif dias == 0:
+            vence_hoje.append({
+                "tipo": "vence_hoje",
+                "mensagem": (
+                    f"Lembrete: O empréstimo do livro '{titulo}' vence hoje. "
+                    f"Realize a devolução para evitar atrasos e não ficar "
+                    f"impossibilitado de realizar novos empréstimos."
+                )
+            })
+
+        elif dias <= 2:
+            proximos.append({
+                "tipo": "proximo",
+                "mensagem": (
+                    f"Lembrete: O empréstimo do livro '{titulo}' está próximo "
+                    f"da data de devolução. Dias restantes: {dias}. Programe "
+                    f"a devolução para evitar atrasos e não ficar impossibilitado "
+                    f"de realizar novos empréstimos."
+                )
+            })
+
+    alerts = atrasados + vence_hoje + proximos
+
+    if alerts:
+        request.session['loan_alerts_shown'] = True
+
+    return {
+        'loan_due_alerts': alerts
     }

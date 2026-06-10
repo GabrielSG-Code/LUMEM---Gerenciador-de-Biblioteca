@@ -11,6 +11,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
 from django.template.loader import render_to_string
 import json
+from datetime import date
 
 # Importações do ReportLab
 from reportlab.lib.pagesizes import letter, A4
@@ -53,9 +54,11 @@ def login_view(request):
 
 
 def logout_view(request):
-    # Clear any remaining messages before logout
+    request.session.pop('loan_alerts_shown', None)
+
     storage = messages.get_messages(request)
     storage.used = True
+
     logout(request)
     return redirect('home')
 
@@ -1064,229 +1067,401 @@ def autocomplete_books(request):
 
 
 @login_required
-def generate_pdf_report(request):
-    # Segurança: Apenas administrador ou bibliotecário
-    if request.user.role == 'reader':
-        return HttpResponse("Acesso Negado: Privilégios insuficientes.", status=403)
+def exportar_relatorio_pdf(request):
+    if request.user.role == 'reader' and not request.user.is_superuser:
+        messages.error(request, "Você não tem permissão para acessar este relatório.")
+        return redirect('dashboard')
 
-    # 1. CAPTURA DOS FILTROS DO MODAL GET
-    data_de = request.GET.get('data_de')
-    data_ate = request.GET.get('data_ate')
-    categoria = request.GET.get('categoria')
-    status_filtro = request.GET.get('status_filtro')
-
-    hoje = timezone.now().date()
-
-    # 2. CONFIGURAÇÃO DA RESPOSTA HTTP (DOWNLOAD DIRETO)
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_LUMEN_{hoje.strftime("%d_%m_%Y")}.pdf"'
+    filename = f"relatorio_gerencial_{date.today().strftime('%Y%m%d')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-    # 3. CRIAÇÃO DO DOCUMENTO EM MEMÓRIA
     doc = SimpleDocTemplate(
-        response, 
+        response,
         pagesize=A4,
-        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=50
-    )
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=20, 
-        textColor=colors.HexColor('#23395d'), alignment=1, spaceAfter=15
-    )
-    subtitle_style = ParagraphStyle(
-        'SubTitleStyle', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=11, 
-        textColor=colors.HexColor('#444444'), alignment=1, spaceAfter=20
-    )
-    h2_style = ParagraphStyle(
-        'H2Style', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=13, 
-        textColor=colors.HexColor('#23395d'), spaceBefore=15, spaceAfter=10
-    )
-    body_style = ParagraphStyle(
-        'BodyStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, textColor=colors.black
-    )
-    danger_style = ParagraphStyle(
-        'DangerStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#c0392b')
-    )
-    filter_style = ParagraphStyle(
-        'FilterStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#555555')
+        leftMargin=42,
+        rightMargin=42,
+        topMargin=42,
+        bottomMargin=42
     )
 
     story = []
 
-    # Cabeçalho
-    story.append(Paragraph("LUMEN — BIBLIOTECA DIGITAL", title_style))
-    story.append(Paragraph("Relatório de Auditoria e Apoio à Tomada de Decisão", subtitle_style))
-    
-    p_de = data_de if data_de else "Início"
-    p_ate = data_ate if data_ate else "Hoje"
-    cat_txt = categoria if categoria else "Todas"
-    story.append(Paragraph(f"<b>Filtros Ativos:</b> Período: {p_de} até {p_ate} | Gênero: {cat_txt}", filter_style))
+    data_de = request.GET.get('data_de')
+    data_ate = request.GET.get('data_ate')
+    categoria = request.GET.get('categoria')
+    status_filtro = request.GET.get('status_filtro', 'todos')
+
+    emprestimos = Emprestimo.objects.all()
+
+    if data_de:
+        emprestimos = emprestimos.filter(data_inicio__gte=data_de)
+
+    if data_ate:
+        emprestimos = emprestimos.filter(data_inicio__lte=data_ate)
+
+    livros = Livros.objects.all()
+
+    if categoria:
+        livros = livros.filter(genero__icontains=categoria)
+
+    active_ids = set(
+        str(x) for x in emprestimos.filter(data_fim__isnull=True)
+        .values_list('id_livro', flat=True)
+    )
+
+    overdue_ids = set(
+        str(x) for x in emprestimos.filter(
+            data_fim__isnull=True,
+            data_entrega__lt=date.today()
+        ).values_list('id_livro', flat=True)
+    )
+
+    if status_filtro == 'disponiveis':
+        livros = livros.exclude(id_livro__in=active_ids)
+
+    elif status_filtro == 'atrasados':
+        livros = livros.filter(id_livro__in=overdue_ids)
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        leading=28,
+        textColor=colors.HexColor('#23395d'),
+        alignment=1,
+        spaceAfter=6
+    )
+
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#6b7a99'),
+        alignment=1,
+        spaceAfter=20
+    )
+
+    h2_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        leading=18,
+        textColor=colors.HexColor('#23395d'),
+        spaceBefore=14,
+        spaceAfter=10,
+        keepWithNext=True
+    )
+
+    body_style = ParagraphStyle(
+        'BodyTextCustom',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#1e2a45')
+    )
+
+    bold_body_style = ParagraphStyle(
+        'BodyTextBold',
+        parent=body_style,
+        fontName='Helvetica-Bold'
+    )
+
+    danger_style = ParagraphStyle(
+        'DangerText',
+        parent=body_style,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#d32f2f')
+    )
+
+    story.append(Paragraph("BIBLIOTECA LUMEN", title_style))
+
+    data_hora = timezone.localtime().strftime('%d/%m/%Y às %H:%M')
+    story.append(
+        Paragraph(
+            f"Relatório Gerencial de Ativos — Gerado em {data_hora}",
+            subtitle_style
+        )
+    )
+
+    line_table = Table([[""]], colWidths=[510], rowHeights=[2])
+    line_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#23395d'))
+    ]))
+
+    story.append(line_table)
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 1: SITUAÇÃO DE LIVROS (QUANTITATIVOS)
+    # SEÇÃO 1: MÉTRICAS GERAIS
     # ==========================================
-    story.append(Paragraph("1. Situação de Inventário e Volumes Disponíveis", h2_style))
-    
-    livros_qs = Livros.objects.all()
-    if categoria:
-        livros_qs = livros_qs.filter(genero__icontains=categoria)
 
-    dados_livros = [["Livro / Autor", "Gênero", "Total", "Disponível", "Emprestada"]]
-    
-    # Mapeamento simples na memória para evitar Joins complexos que dão erro 500
-    todos_emprestimos_ativos = Emprestimo.objects.filter(data_fim__isnull=True)
-    
-    for livro in livros_qs:
-        # Conta quantos empréstimos ativos existem para o ID deste livro
-        total_emprestado = todos_emprestimos_ativos.filter(id_livro=livro.id_livro).count()
-        total_exemplares = 5 
-        disponivel = max(0, total_exemplares - total_emprestado)
-        
-        if status_filtro == 'disponiveis' and disponivel == 0:
-            continue
+    story.append(Paragraph("1. Resumo Executivo e Métricas Gerais", h2_style))
 
-        p_livro = Paragraph(f"<b>{livro.titulo}</b><br/><font color='#666666'>{livro.autor}</font>", body_style)
+    total_livros = livros.count()
+
+    total_emprestimos_ativos = emprestimos.filter(
+        data_fim__isnull=True
+    ).count()
+
+    total_atrasados = emprestimos.filter(
+        data_fim__isnull=True,
+        data_entrega__lt=date.today()
+    ).count()
+
+    total_usuarios = User.objects.count()
+
+    total_disponiveis = livros.exclude(
+        id_livro__in=active_ids
+    ).count()
+
+    dados_metricas = [
+        [
+            Paragraph("Métrica Gerencial", bold_body_style),
+            Paragraph("Quantidade Atual", bold_body_style)
+        ],
+        [
+            Paragraph("Total de Livros Cadastrados", body_style),
+            Paragraph(str(total_livros), body_style)
+        ],
+        [
+            Paragraph("Exemplares Disponíveis", body_style),
+            Paragraph(str(total_disponiveis), body_style)
+        ],
+        [
+            Paragraph("Exemplares Emprestados", body_style),
+            Paragraph(str(total_emprestimos_ativos), body_style)
+        ],
+        [
+            Paragraph("Usuários Registrados", body_style),
+            Paragraph(str(total_usuarios), body_style)
+        ],
+        [
+            Paragraph("Livros em Atraso", body_style),
+            Paragraph(
+                str(total_atrasados),
+                danger_style if total_atrasados > 0 else body_style
+            )
+        ],
+    ]
+
+    t_metricas = Table(
+        dados_metricas,
+        colWidths=[380, 130],
+        repeatRows=1
+    )
+
+    t_metricas.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('PADDING', (0, 0), (-1, -1), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+
+    story.append(t_metricas)
+    story.append(Spacer(1, 15))
+
+    # ==========================================
+    # SEÇÃO 2: INVENTÁRIO DO ACERVO
+    # ==========================================
+
+    story.append(Paragraph("2. Inventário do Acervo", h2_style))
+
+    dados_livros = [[
+        Paragraph("ID", bold_body_style),
+        Paragraph("Título", bold_body_style),
+        Paragraph("Autor", bold_body_style),
+        Paragraph("Gênero", bold_body_style),
+        Paragraph("Status", bold_body_style),
+    ]]
+
+    for livro in livros.order_by('titulo'):
+        livro_id = str(livro.id_livro)
+
+        if livro_id in active_ids:
+            status = "Emprestado"
+        else:
+            status = "Disponível"
+
         dados_livros.append([
-            p_livro, 
-            livro.genero if livro.genero else "-", 
-            str(total_exemplares), 
-            str(disponivel), 
-            str(total_emprestado)
+            Paragraph(str(livro.id_livro), body_style),
+            Paragraph(livro.titulo or "-", body_style),
+            Paragraph(livro.autor or "-", body_style),
+            Paragraph(livro.genero or "-", body_style),
+            Paragraph(status, body_style),
         ])
 
     if len(dados_livros) > 1:
-        t_livros = Table(dados_livros, colWidths=[200, 110, 60, 70, 70])
+        t_livros = Table(
+            dados_livros,
+            colWidths=[45, 180, 115, 85, 85],
+            repeatRows=1
+        )
+
         t_livros.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
+
         story.append(t_livros)
     else:
-        story.append(Paragraph("Nenhum registro de acervo compatível.", body_style))
+        story.append(Paragraph("Nenhum livro encontrado com os filtros selecionados.", body_style))
 
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 2: LIVROS MAIS EMPRESTADOS (RANKING)
+    # SEÇÃO 3: RANKING DE LIVROS MAIS EMPRESTADOS
     # ==========================================
-    story.append(Paragraph("2. Livros Mais Emprestados (Top de Circulação)", h2_style))
-    
-    historico_emprestimos = Emprestimo.objects.all()
-    if data_de:
-        historico_emprestimos = historico_emprestimos.filter(data_inicio__gte=data_de)
-    if data_ate:
-        historico_emprestimos = historico_emprestimos.filter(data_inicio__lte=data_ate)
 
-    # Agrupamos os IDs mais emprestados de forma totalmente compatível com o seu banco
-    ranking_ids = (
-        historico_emprestimos.values('id_livro')
-        .annotate(total_saidas=Count('id_emprestimo'))
+    story.append(Paragraph("3. Ranking de Obras Mais Retiradas (Top 5)", h2_style))
+
+    livros_populares = (
+        emprestimos
+        .values('id_livro')
+        .annotate(total_saidas=Count('id'))
         .order_by('-total_saidas')[:5]
     )
 
-    dados_rank = [["Posição", "Livro / Autor", "Gênero", "Total Saídas"]]
-    for idx, r in enumerate(ranking_ids, start=1):
-        try:
-            livro_obj = Livros.objects.get(id_livro=r['id_livro'])
-            p_rank = Paragraph(f"<b>{livro_obj.titulo}</b><br/><font color='#666666'>{livro_obj.autor}</font>", body_style)
-            dados_rank.append([
-                f"{idx}º", 
-                p_rank, 
-                livro_obj.genero if livro_obj.genero else "-", 
-                f"{r['total_saidas']} saídas"
-            ])
-        except Livros.DoesNotExist:
-            continue
+    dados_ranking = [[
+        Paragraph("Código", bold_body_style),
+        Paragraph("Título da Obra / Autor", bold_body_style),
+        Paragraph("Total de Retiradas", bold_body_style)
+    ]]
 
-    if len(dados_rank) > 1:
-        t_rank = Table(dados_rank, colWidths=[60, 250, 110, 90])
-        t_rank.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (0,0), (0,-1), 'CENTER'),
-            ('ALIGN', (3,0), (3,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    for item in livros_populares:
+        id_livro_str = str(item['id_livro'])
+        total_saidas = item['total_saidas']
+
+        try:
+            livro_obj = Livros.objects.get(id_livro=int(id_livro_str))
+            info_livro = (
+                f"<b>{livro_obj.titulo}</b><br/>"
+                f"<font color='#6b7a99'>{livro_obj.autor}</font>"
+            )
+        except (Livros.DoesNotExist, ValueError, TypeError):
+            info_livro = f"Livro Não Identificado (ID: {id_livro_str})"
+
+        dados_ranking.append([
+            Paragraph(id_livro_str, body_style),
+            Paragraph(info_livro, body_style),
+            Paragraph(f"{total_saidas} vezes", body_style)
+        ])
+
+    if len(dados_ranking) > 1:
+        t_ranking = Table(
+            dados_ranking,
+            colWidths=[70, 310, 130],
+            repeatRows=1
+        )
+
+        t_ranking.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
-        story.append(t_rank)
+
+        story.append(t_ranking)
     else:
-        story.append(Paragraph("Não houve movimentações de saída para estes critérios.", body_style))
+        story.append(Paragraph("Nenhuma movimentação de empréstimo registrada.", body_style))
 
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 3: USUÁRIOS COM DEVOLUÇÃO EM ATRASO
+    # SEÇÃO 4: USUÁRIOS INADIMPLENTES
     # ==========================================
-    story.append(Paragraph("3. Usuários Inadimplentes (Com Devoluções em Atraso)", h2_style))
-    
-    dados_atrasados = [["Leitor / Contato", "Obra Alocada", "Data Vencimento", "Dias em Atraso"]]
-    
-    # Coleta empréstimos abertos cujo prazo de entrega já expirou
-    emprestimos_atrasados_qs = Emprestimo.objects.filter(data_fim__isnull=True, data_entrega__lt=hoje)
-    
-    for emp in emprestimos_atrasados_qs:
-        dias = (hoje - emp.data_entrega).days
-        
-        # Fazemos a busca manual e controlada por ID (Livre de Erros 500 de FK)
-        u_nome = "Desconhecido"
-        u_email = "Sem e-mail"
-        if emp.id_usuario_id:
-            try:
-                usr = User.objects.get(id=emp.id_usuario_id)
-                u_nome = usr.username
-                u_email = usr.email
-            except User.DoesNotExist:
-                pass
-                
-        livro_tit = "Desconhecido"
-        if emp.id_livro_id:
-            try:
-                livro_tit = Livros.objects.get(id_livro=emp.id_livro_id).titulo
-            except Livros.DoesNotExist:
-                pass
-        
-        p_user = Paragraph(f"<b>{u_nome}</b><br/><font color='#666666'>{u_email}</font>", body_style)
-        
+
+    story.append(Paragraph("4. Usuários Inadimplentes (Com Devoluções em Atraso)", h2_style))
+
+    emprestimos_atrasados = emprestimos.filter(
+        data_fim__isnull=True,
+        data_entrega__lt=date.today()
+    ).order_by('data_entrega')
+
+    dados_atrasados = [[
+        Paragraph("Leitor / Usuário", bold_body_style),
+        Paragraph("Obra Retirada", bold_body_style),
+        Paragraph("Prazo Limite", bold_body_style),
+        Paragraph("Dias de Atraso", bold_body_style)
+    ]]
+
+    for emp in emprestimos_atrasados:
+        try:
+            user_obj = User.objects.get(id=int(emp.id_usuario))
+            info_user = (
+                f"<b>{user_obj.get_full_name() or user_obj.username}</b><br/>"
+                f"<font color='#6b7a99'>{user_obj.email}</font>"
+            )
+        except (User.DoesNotExist, ValueError, TypeError):
+            info_user = f"ID Usuário: {emp.id_usuario}"
+
+        try:
+            livro_obj = Livros.objects.get(id_livro=int(emp.id_livro))
+            info_livro = livro_obj.titulo
+        except (Livros.DoesNotExist, ValueError, TypeError):
+            info_livro = f"ID Livro: {emp.id_livro}"
+
+        dias_atraso = (date.today() - emp.data_entrega).days
+
         dados_atrasados.append([
-            p_user, 
-            livro_tit, 
-            emp.data_entrega.strftime("%d/%m/%Y"), 
-            Paragraph(f"{dias} dias", danger_style)
+            Paragraph(info_user, body_style),
+            Paragraph(info_livro, body_style),
+            Paragraph(emp.data_entrega.strftime("%d/%m/%Y"), body_style),
+            Paragraph(f"{dias_atraso} dias", danger_style)
         ])
 
     if len(dados_atrasados) > 1:
-        t_atraso = Table(dados_atrasados, colWidths=[160, 160, 100, 90])
+        t_atraso = Table(
+            dados_atrasados,
+            colWidths=[160, 160, 100, 90],
+            repeatRows=1
+        )
+
         t_atraso.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
+
         story.append(t_atraso)
     else:
-        story.append(Paragraph("Nenhuma pendência ou atraso crítico listado no momento.", body_style))
+        story.append(Paragraph("Nenhum usuário com atraso no momento.", body_style))
 
-    # Rodapé Dinâmico
-    def add_footer(canvas, doc):
+    def adicionar_rodape(canvas, doc):
         canvas.saveState()
+
         canvas.setFont('Helvetica', 9)
-        canvas.setFillColor(colors.HexColor('#555555'))
-        canvas.drawString(40, 30, "LUMEN — Sistema de Gerenciamento de Biblioteca")
-        
-        agora_str = timezone.now().strftime("%d/%m/%Y %H:%M")
-        canvas.drawRightString(A4[0] - 40, 30, f"Gerado em: {agora_str} — Página {doc.page}")
+        canvas.setFillColor(colors.HexColor('#6b7a99'))
+
+        canvas.setStrokeColor(colors.HexColor('#eaeef4'))
+        canvas.setLineWidth(0.5)
+        canvas.line(42, 50, 553, 50)
+
+        data_geracao = timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
+
+        canvas.drawString(42, 38, f"Gerado em: {data_geracao}")
+        canvas.drawRightString(553, 38, f"Página {doc.page}")
+
         canvas.restoreState()
 
-    # Compilação
-    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
-    
+    doc.build(
+        story,
+        onFirstPage=adicionar_rodape,
+        onLaterPages=adicionar_rodape
+    )
+
     return response

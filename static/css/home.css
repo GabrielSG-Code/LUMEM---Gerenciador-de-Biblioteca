@@ -421,3 +421,56 @@
     text-align: center;
   }
 }
+
+.loan-alert-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loan-alert-modal {
+    width: 90%;
+    max-width: 480px;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+.loan-alert-header {
+    background: #5d8df7;
+    color: white;
+    padding: 18px 22px;
+}
+
+.loan-alert-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.loan-alert-body {
+    padding: 22px;
+    color: #1e2a45;
+    line-height: 1.5;
+}
+
+.loan-alert-footer {
+    padding: 16px 22px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #e5e7eb;
+}
+
+.loan-alert-footer button {
+    background: #5d8df7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    cursor: pointer;
+}

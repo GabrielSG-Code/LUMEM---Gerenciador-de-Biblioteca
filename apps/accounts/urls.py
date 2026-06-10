@@ -20,5 +20,5 @@ urlpatterns = [
     path('autocomplete/users/', views.autocomplete_users, name='autocomplete_users'),
     path('autocomplete/books/', views.autocomplete_books, name='autocomplete_books'),
     path('search-books/', views.search_existing_books, name='search_existing_books'),
-    path('loans/report/', views.generate_pdf_report, name='generate_pdf_report'),
+    path('loans/export-pdf/', views.exportar_relatorio_pdf, name='exportar_relatorio_pdf'),
 ]

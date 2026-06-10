@@ -8,3 +8,4 @@ whitenoise
 dj_database_url
 gunicorn==23.0.0
 reportlab
+weasyprint
