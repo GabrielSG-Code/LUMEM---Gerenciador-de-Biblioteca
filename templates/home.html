@@ -141,7 +141,67 @@
     {% endif %}
   </div>
   {% endif %}
+  
 
 </div>
 
+{% if loan_due_alerts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const alerts = {{ loan_due_alerts|safe }};
+    let index = 0;
+
+    function getAlertTitle(tipo) {
+        if (tipo === 'atrasado') {
+            return 'Aviso de Atraso';
+        }
+
+        if (tipo === 'vence_hoje') {
+            return 'Vencimento Hoje';
+        }
+
+        return 'Próximo do Vencimento';
+    }
+
+    function showNextAlert() {
+        if (index >= alerts.length) {
+            return;
+        }
+
+        const alert = alerts[index];
+
+        const overlay = document.createElement('div');
+        overlay.className = 'loan-alert-overlay';
+
+        overlay.innerHTML = `
+            <div class="loan-alert-modal">
+                <div class="loan-alert-header">
+                    <h3>${getAlertTitle(alert.tipo)}</h3>
+                </div>
+
+                <div class="loan-alert-body">
+                    <p>${alert.mensagem}</p>
+                </div>
+
+                <div class="loan-alert-footer">
+                    <button type="button" id="closeLoanAlert">
+                        Entendi
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('closeLoanAlert').addEventListener('click', function () {
+            overlay.remove();
+            index++;
+            showNextAlert();
+        });
+    }
+
+    showNextAlert();
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -245,6 +245,7 @@ function openEditBookModal() {
     document.getElementById('editBookPublisher').value = '';
     document.getElementById('editBookCategory').value = '';
     document.getElementById('editBookCopies').value = '';
+    document.getElementById('editBookDescription').value = '';
     
     // Clear any existing search results
     hideSearchResults();
@@ -290,6 +291,7 @@ function submitEditBookForm() {
     const year = formData.get('year') || '';
     const publisher = formData.get('publisher') || '';
     const category = formData.get('category') || '';
+    const description = formData.get('description') || '';
     const copies = parseInt(formData.get('copies')) || 1;
     
     // Validate required fields
@@ -323,9 +325,10 @@ function submitEditBookForm() {
     
     const publisherChanged = publisher !== (originalData.editora || '');
     const categoryChanged = category !== (originalData.genero || '');
+    const descriptionChanged = description !== (originalData.descricao || '');
     const copiesChanged = copies !== (originalData.total_count || 1);
     
-    const hasChanges = titleChanged || authorChanged || yearChanged || publisherChanged || categoryChanged || copiesChanged;
+    const hasChanges = titleChanged || authorChanged || yearChanged || publisherChanged || categoryChanged || descriptionChanged || copiesChanged;
     
     if (!hasChanges) {
         alert('Nenhuma alteração foi detectada. Modifique pelo menos um campo para salvar as alterações.');
@@ -434,8 +437,10 @@ function displaySearchResults(results) {
         const escapedCategory = result.category.replace(/'/g, "\\'");
         const escapedPublisher = (result.publisher || '').replace(/'/g, "\\'");
         
+        const escapedDescription = (result.description || '').replace(/'/g, "\\'");
+        
         html += `
-            <div class="search-result-item" onclick="selectSearchResult('${escapedTitle}', '${escapedAuthor}', '${escapedCategory}', ${result.year || 'null'}, '${escapedPublisher}', ${result.total_copies || 1}, ${result.id})">
+            <div class="search-result-item" onclick="selectSearchResult('${escapedTitle}', '${escapedAuthor}', '${escapedCategory}', ${result.year || 'null'}, '${escapedPublisher}', '${escapedDescription}', ${result.total_copies || 1}, ${result.id})">
                 <div class="result-title">${result.title}</div>
                 <div class="result-author">por ${result.author}</div>
                 <div class="result-category">${result.category} • ${result.total_copies} exemplar(es)</div>
@@ -447,13 +452,45 @@ function displaySearchResults(results) {
     resultsContainer.style.display = 'block';
 }
 
-function selectSearchResult(title, author, category, year, publisher, copies, bookId) {
+function selectSearchResult(title, author, category, year, publisher, description, copies, bookId) {
     // Fill form with selected book data
     document.getElementById('editBookTitle').value = title;
     document.getElementById('editBookAuthor').value = author;
-    document.getElementById('editBookCategory').value = category;
+    
+    // Set category dropdown value - find exact match or closest match
+    const categorySelect = document.getElementById('editBookCategory');
+    const categoryOptions = categorySelect.options;
+    let foundMatch = false;
+    
+    // First try exact match
+    for (let i = 0; i < categoryOptions.length; i++) {
+        if (categoryOptions[i].value === category) {
+            categorySelect.selectedIndex = i;
+            foundMatch = true;
+            break;
+        }
+    }
+    
+    // If no exact match, try case-insensitive match
+    if (!foundMatch) {
+        for (let i = 0; i < categoryOptions.length; i++) {
+            if (categoryOptions[i].value.toLowerCase() === category.toLowerCase()) {
+                categorySelect.selectedIndex = i;
+                foundMatch = true;
+                break;
+            }
+        }
+    }
+    
+    // If still no match, log warning but continue
+    if (!foundMatch) {
+        console.warn(`Category "${category}" not found in dropdown options`);
+        categorySelect.selectedIndex = 0; // Select "Selecione uma categoria"
+    }
+    
     document.getElementById('editBookYear').value = year || '';
     document.getElementById('editBookPublisher').value = publisher || '';
+    document.getElementById('editBookDescription').value = description || '';
     document.getElementById('editBookCopies').value = copies || 1;
     
     // Set up the current book data with the selected book information
@@ -464,6 +501,7 @@ function selectSearchResult(title, author, category, year, publisher, copies, bo
         category: category,
         year: year,
         publisher: publisher,
+        description: description,
         exemplary: copies
     };
     
@@ -475,6 +513,7 @@ function selectSearchResult(title, author, category, year, publisher, copies, bo
         genero: category,        // matches Django field 'genero'
         ano: year,               // matches Django field 'ano'
         editora: publisher,      // matches Django field 'editora'
+        descricao: description,  // matches Django field 'descricao'
         total_count: copies      // matches Django field 'total_count'
     };
     

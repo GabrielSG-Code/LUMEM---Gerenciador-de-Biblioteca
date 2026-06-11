@@ -5,17 +5,17 @@ from .models import User, Emprestimo, Livros, Usuarios, LoanConfig
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'role', 'is_staff', 'is_active', 'date_joined')
-    list_filter = ('role', 'is_staff', 'is_active', 'date_joined')
+    list_display = ('username', 'email', 'role', 'status', 'is_staff', 'is_active', 'date_joined')
+    list_filter = ('role', 'status', 'is_staff', 'is_active', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     ordering = ('username',)
     
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Role Information', {'fields': ('role',)}),
+        ('User Information', {'fields': ('role', 'status')}),
     )
     
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Role Information', {'fields': ('role',)}),
+        ('User Information', {'fields': ('role', 'status')}),
     )
 
 

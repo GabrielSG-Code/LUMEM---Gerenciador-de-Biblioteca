@@ -2,18 +2,36 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.db.models import Q, Count
 from django.db import models
 from django.core.exceptions import ValidationError
 
 from .models import Livros, Emprestimo, LoanConfig
 
+# Dynamic year calculation
+def get_current_year():
+    """Get current year for dynamic form validation"""
+    return datetime.now().year
+
+def get_max_book_year():
+    """Get maximum allowed year for book publication (current year only)"""
+    return get_current_year()
+
+def get_max_book_copies():
+    """Get maximum allowed number of book copies for reasonable library management"""
+    return 9999  # Maximum 4 characters, 9999 copies limit
+
+def get_default_book_copies():
+    """Get default number of copies when adding a new book"""
+    return 1
+
 User = get_user_model()
 
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(
+        max_length=320,
         required=True,
         error_messages={
             'invalid': 'Insira um endereço de e-mail válido.',
@@ -98,7 +116,7 @@ class RegisterForm(UserCreationForm):
 
 class EmailOrUsernameLoginForm(AuthenticationForm):
     username = forms.CharField(
-        max_length=254,
+        max_length=320,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Email ou nome de usuário'
@@ -109,6 +127,7 @@ class EmailOrUsernameLoginForm(AuthenticationForm):
     )
     
     password = forms.CharField(
+        max_length=128,
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
             'placeholder': 'Senha'
@@ -140,14 +159,30 @@ class EmailOrUsernameLoginForm(AuthenticationForm):
 
 
 class AddBookForm(forms.Form):
-    title = forms.CharField(max_length=255, label="Título")
-    author = forms.CharField(max_length=255, label="Autor")
-    description = forms.CharField(required=False, widget=forms.Textarea, label="Descrição")
-    release_year = forms.IntegerField(required=False, min_value=1000, max_value=2100, label="Ano de Lançamento")
-    category = forms.CharField(max_length=255, label="Categoria")
-    publisher = forms.CharField(max_length=255, required=False, label="Editora")
+    title = forms.CharField(max_length=200, min_length=1, label="Título")
+    author = forms.CharField(max_length=150, min_length=1, label="Autor")
+    description = forms.CharField(max_length=2000, required=False, widget=forms.Textarea(attrs={'rows': 6}), label="Descrição")
+    release_year = forms.IntegerField(required=False, min_value=1000, label="Ano de Lançamento")
+    category = forms.CharField(max_length=50, label="Categoria")
+    publisher = forms.CharField(max_length=100, required=False, label="Editora")
     exemplary = forms.IntegerField(min_value=1, label="Número de Exemplares")
     force_duplicate = forms.BooleanField(required=False, widget=forms.HiddenInput())
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set dynamic max_value for release_year
+        self.fields['release_year'].max_value = get_max_book_year()
+        self.fields['release_year'].widget.attrs.update({
+            'max': get_max_book_year(),
+            'placeholder': str(get_current_year())
+        })
+        
+        # Set dynamic max_value for exemplary (copies)
+        self.fields['exemplary'].max_value = get_max_book_copies()
+        self.fields['exemplary'].widget.attrs.update({
+            'max': get_max_book_copies(),
+            'placeholder': str(get_default_book_copies())
+        })
 
     def clean(self):
         cleaned_data = super().clean()
@@ -278,7 +313,7 @@ class AddBookForm(forms.Form):
 
 class LoanForm(forms.ModelForm):
     user_search = forms.CharField(
-        max_length=255,
+        max_length=100,
         widget=forms.TextInput(attrs={
             'class': 'form-control autocomplete-input',
             'placeholder': 'Digite o nome ou email do usuário...',
@@ -293,7 +328,7 @@ class LoanForm(forms.ModelForm):
         required=False
     )
     book_search = forms.CharField(
-        max_length=255,
+        max_length=150,
         widget=forms.TextInput(attrs={
             'class': 'form-control autocomplete-input',
             'placeholder': 'Digite o título ou autor do livro...',
@@ -312,8 +347,8 @@ class LoanForm(forms.ModelForm):
             'class': 'form-control',
             'type': 'date',
             'readonly': 'readonly'
-        }),
-        initial=timezone.now().date,
+        }, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d'],
         label="Data de Início"
     )
     data_entrega = forms.DateField(
@@ -321,7 +356,8 @@ class LoanForm(forms.ModelForm):
             'class': 'form-control',
             'type': 'date',
             'readonly': 'readonly'
-        }),
+        }, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d'],
         label="Data de Entrega"
     )
     class Meta:
@@ -429,7 +465,11 @@ class LoanForm(forms.ModelForm):
             loan_config = LoanConfig.get_config()
             
             # Check restrictions and provide specific error messages
-            if overdue_loans >= 1:
+            if user.status == User.Status.BLOCKED:
+                raise forms.ValidationError(
+                    'Não é possível realizar o empréstimo: usuário bloqueado por devolução de livro danificado.'
+                )
+            elif overdue_loans >= 1:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor possui empréstimos em atraso.'
                 )
@@ -566,6 +606,7 @@ class ChangePasswordForm(PasswordChangeForm):
 class ChangeEmailForm(forms.Form):
     """Form for changing user email"""
     new_email = forms.EmailField(
+        max_length=320,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
             'placeholder': 'Novo email'
@@ -573,6 +614,7 @@ class ChangeEmailForm(forms.Form):
         label="Novo Email"
     )
     password = forms.CharField(
+        max_length=128,
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
             'placeholder': 'Senha atual para confirmar'
@@ -631,16 +673,29 @@ class ChangeEmailForm(forms.Form):
 
 class EditBookForm(forms.Form):
     """Form for editing book information with validation for unchanged data"""
-    title = forms.CharField(max_length=255, label="Título")
-    author = forms.CharField(max_length=255, label="Autor") 
-    year = forms.IntegerField(required=False, min_value=1000, max_value=2100, label="Ano de Lançamento")
-    publisher = forms.CharField(max_length=255, required=False, label="Editora")
-    category = forms.CharField(max_length=255, label="Categoria")
+    title = forms.CharField(max_length=200, min_length=1, label="Título")
+    author = forms.CharField(max_length=150, min_length=1, label="Autor") 
+    year = forms.IntegerField(required=False, min_value=1000, label="Ano de Lançamento")
+    publisher = forms.CharField(max_length=100, required=False, label="Editora")
+    category = forms.CharField(max_length=50, label="Categoria")
+    description = forms.CharField(max_length=2000, required=False, label="Descrição", widget=forms.Textarea(attrs={'rows': 4}))
     copies = forms.IntegerField(min_value=1, label="Exemplares")
     
     def __init__(self, book_data=None, *args, **kwargs):
         self.original_data = book_data
         super().__init__(*args, **kwargs)
+        
+        # Set dynamic max_value for year
+        self.fields['year'].max_value = get_max_book_year()
+        self.fields['year'].widget.attrs.update({
+            'max': get_max_book_year()
+        })
+        
+        # Set dynamic max_value for copies
+        self.fields['copies'].max_value = get_max_book_copies()
+        self.fields['copies'].widget.attrs.update({
+            'max': get_max_book_copies()
+        })
         
         # Pre-fill fields with existing data
         if book_data:
@@ -649,6 +704,7 @@ class EditBookForm(forms.Form):
             self.fields['year'].initial = book_data.get('ano', '')
             self.fields['publisher'].initial = book_data.get('editora', '')
             self.fields['category'].initial = book_data.get('genero', '')
+            self.fields['description'].initial = book_data.get('descricao', '')
             self.fields['copies'].initial = book_data.get('total_count', 1)
     
     def clean(self):
@@ -661,10 +717,11 @@ class EditBookForm(forms.Form):
             year_changed = cleaned_data.get('year') != self.original_data.get('ano')
             publisher_changed = cleaned_data.get('publisher') != self.original_data.get('editora', '')
             category_changed = cleaned_data.get('category') != self.original_data.get('genero', '')
+            description_changed = cleaned_data.get('description') != self.original_data.get('descricao', '')
             copies_changed = cleaned_data.get('copies') != self.original_data.get('total_count', 1)
             
             # If no changes were made, raise validation error
-            if not (title_changed or author_changed or year_changed or publisher_changed or category_changed or copies_changed):
+            if not (title_changed or author_changed or year_changed or publisher_changed or category_changed or description_changed or copies_changed):
                 raise forms.ValidationError('Nenhuma alteração foi detectada. Modifique pelo menos um campo para salvar as alterações.')
         
         return cleaned_data
@@ -673,7 +730,8 @@ class EditBookForm(forms.Form):
 class ChangeUsernameForm(forms.Form):
     """Form for changing username"""
     new_username = forms.CharField(
-        max_length=150,
+        max_length=30,
+        min_length=3,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Novo nome de usuário'
@@ -681,6 +739,7 @@ class ChangeUsernameForm(forms.Form):
         label="Novo Nome de Usuário"
     )
     password = forms.CharField(
+        max_length=128,
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
             'placeholder': 'Senha atual para confirmar'
@@ -720,8 +779,8 @@ class ChangeUsernameForm(forms.Form):
             # Check username length
             if len(new_username) < 3:
                 username_errors.append('Nome de usuário muito curto: É preciso pelo menos 3 caracteres.')
-            elif len(new_username) > 150:
-                username_errors.append('Nome de usuário muito longo: Máximo de 150 caracteres.')
+            elif len(new_username) > 30:
+                username_errors.append('Nome de usuário muito longo: Máximo de 30 caracteres.')
             
             # Check if username contains only valid characters
             import re

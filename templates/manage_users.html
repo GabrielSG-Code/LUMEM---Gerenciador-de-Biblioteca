@@ -19,16 +19,16 @@
       <span class="stat-value" id="total-users">{{ stats.total }}</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label"><span class="dot dot-gray"></span>Administradores</span>
-      <span class="stat-value" id="admin-count">{{ stats.admin }}</span>
+      <span class="stat-label"><span class="dot dot-green"></span>Ativos</span>
+      <span class="stat-value" id="active-count">{{ stats.active }}</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label"><span class="dot dot-cyan"></span>Bibliotecários</span>
-      <span class="stat-value" id="librarian-count">{{ stats.librarian }}</span>
+      <span class="stat-label"><span class="dot dot-gray"></span>Inativos</span>
+      <span class="stat-value" id="inactive-count">{{ stats.inactive }}</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label"><span class="dot dot-lavender"></span>Leitores</span>
-      <span class="stat-value" id="reader-count">{{ stats.reader }}</span>
+      <span class="stat-label"><span class="dot dot-red"></span>Bloqueados</span>
+      <span class="stat-value" id="blocked-count">{{ stats.blocked }}</span>
     </div>
   </div>
 
@@ -38,13 +38,33 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input type="text" id="searchInput" placeholder="Busca por nome ou e-mail" oninput="filterUsers()"/>
+      <input type="text" id="searchInput" placeholder="Busca por nome ou e-mail" oninput="filterUsers()" maxlength="100"/>
     </div>
-    <div class="filter-btns">
-      <button class="filter-btn active" onclick="setFilter('Todos', this)">Todos</button>
-      <button class="filter-btn" onclick="setFilter('Administrador', this)">Administrador</button>
-      <button class="filter-btn" onclick="setFilter('Bibliotecário', this)">Bibliotecário</button>
-      <button class="filter-btn" onclick="setFilter('Leitor', this)">Leitor</button>
+    <div class="filter-dropdowns">
+      <div class="filter-dropdown">
+        <select id="userTypeFilter" onchange="applyFilters()">
+          <option value="Todos">Todos os tipos</option>
+          <option value="Administrador">Administrador</option>
+          <option value="Bibliotecário">Bibliotecário</option>
+          <option value="Leitor">Leitor</option>
+        </select>
+      </div>
+      <div class="filter-dropdown">
+        <select id="userStatusFilter" onchange="applyFilters()">
+          <option value="Todos">Todos os status</option>
+          <option value="Ativo">Ativo</option>
+          <option value="Inativo">Inativo</option>
+          <option value="Bloqueado">Bloqueado</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn-reset-filters" onclick="resetFilters()" title="Limpar todos os filtros">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          </svg>
+          Limpar filtros
+        </button>
+      </div>
     </div>
   </div>
 
@@ -89,22 +109,76 @@
         </div>
 
         <div class="form-group">
-          <div class="toggle-group">
-            <div class="toggle-info">
-              <label>Status da conta</label>
-              <div class="form-desc">Ativar ou desativar o acesso deste usuário ao sistema</div>
+          <label for="editUserStatus">Status da conta</label>
+          <div class="form-desc">Definir o status do usuário no sistema</div>
+          <select id="editUserStatus" name="status" required>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+            <option value="Bloqueado">Bloqueado</option>
+          </select>
+        </div>
+
+        <!-- Damage Information Section (only for blocked users) -->
+        <div id="damageSection" class="damage-section" style="display: none;">
+          <h3>Informações do Dano</h3>
+          <div class="damage-info">
+            <div class="info-row">
+              <label>Livro:</label>
+              <span id="damageBookTitle">-</span>
             </div>
-            <div class="toggle-wrap">
-              <label class="toggle">
-                <input type="checkbox" id="editUserStatus" name="status" checked onchange="updateToggleLabel()"/>
-                <span class="slider"></span>
-              </label>
-              <span class="toggle-label" id="toggleLabel">Ativo</span>
+            <div class="info-row">
+              <label>Descrição do dano:</label>
+              <span id="damageDescription">-</span>
+            </div>
+            <div class="info-row">
+              <label>Data de ocorrência:</label>
+              <span id="damageDate">-</span>
+            </div>
+            <div class="info-row">
+              <label>Status atual:</label>
+              <span id="damageStatus" class="status-blocked">Bloqueado</span>
             </div>
           </div>
         </div>
+
+        <!-- Regularization Section (only for blocked users) -->
+        <div id="regularizationSection" class="regularization-section" style="display: none;">
+          <h3>Regularização</h3>
+          <div class="form-group">
+            <label for="regularizationMethod">Método de regularização <span class="required">*</span></label>
+            <div class="form-desc">Selecione como a situação foi resolvida</div>
+            <select id="regularizationMethod" name="regularization_method" required>
+              <option value="">Selecione o método...</option>
+              <option value="financial">Reembolso financeiro</option>
+              <option value="replacement">Substituição do livro</option>
+              <option value="other">Outro</option>
+            </select>
+            <div class="field-error" id="regularizationMethodError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="regularizationNotes">Observações (opcional)</label>
+            <div class="form-desc">Informações adicionais sobre a regularização</div>
+            <textarea 
+              id="regularizationNotes" 
+              name="regularization_notes" 
+              rows="3" 
+              maxlength="500"
+              placeholder="Ex: Valor reembolsado via PIX, novo livro entregue, etc.">
+            </textarea>
+          </div>
+
+          <div class="regularization-warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <strong>Atenção:</strong> Ao confirmar a regularização, o usuário será desbloqueado e poderá realizar novos empréstimos. Esta ação não pode ser desfeita.
+          </div>
+        </div>
         
-        <div class="form-warning">
+        <div class="form-warning" id="standardWarning">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/>
           </svg>
@@ -113,7 +187,7 @@
         
         <div class="form-actions">
           <button type="button" class="btn-secondary" onclick="closeEditUserModal()">Cancelar</button>
-          <button type="submit" class="btn-primary">Salvar Alterações</button>
+          <button type="submit" class="btn-primary" id="saveChangesBtn">Salvar Alterações</button>
         </div>
       </form>
     </div>
@@ -135,7 +209,7 @@ window.allUsers = [
     email: '{{ user.email|escapejs }}',
     role: '{{ user.role|escapejs }}',
     badgeClass: {% if user.role == 'Administrador' %}'badge-admin'{% elif user.role == 'Bibliotecário' %}'badge-biblio'{% else %}'badge-leitor'{% endif %},
-    active: {% if user.active %}true{% else %}false{% endif %},
+    status: '{{ user.status|escapejs }}',
     lastAccess: '{{ user.last_login|escapejs }}',
     isSuperuser: {% if user.is_superuser %}true{% else %}false{% endif %},
     canEdit: {% if user.can_edit %}true{% else %}false{% endif %}

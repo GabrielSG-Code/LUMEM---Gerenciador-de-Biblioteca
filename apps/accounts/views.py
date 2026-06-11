@@ -10,7 +10,9 @@ from datetime import timedelta
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count
 from django.template.loader import render_to_string
+from django.db import transaction
 import json
+from datetime import date
 
 # Importações do ReportLab
 from reportlab.lib.pagesizes import letter, A4
@@ -18,8 +20,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm
-from .models import Livros, User, Emprestimo, LoanConfig
+from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm, get_current_year, get_max_book_year, get_max_book_copies, get_default_book_copies
+from .models import Livros, User, Emprestimo, LoanConfig, DamageReport, UserRegularization
 
 
 def register(request):
@@ -53,9 +55,11 @@ def login_view(request):
 
 
 def logout_view(request):
-    # Clear any remaining messages before logout
+    request.session.pop('loan_alerts_shown', None)
+
     storage = messages.get_messages(request)
     storage.used = True
+
     logout(request)
     return redirect('home')
 
@@ -117,8 +121,9 @@ def browse_collection(request):
 
     from django.db.models import Count, Case, When, IntegerField
 
+    # Fast and simple grouping - group only by title and author for consistency
     unique_books_query = livros_query.values(
-        'titulo', 'autor', 'genero', 'ano', 'editora', 'descricao'
+        'titulo', 'autor'
     ).annotate(
         total_count=Count('id_livro'),
         available_count=Count(
@@ -135,7 +140,13 @@ def browse_collection(request):
 
     # Calculate stats for the stats bar
     from django.utils import timezone
-    borrowed_exemplars = livros_query.exclude(status_livro__iexact='disponível').count()
+    
+    # Count all loans (both active and completed) instead of just borrowed books
+    total_loans_count = 0
+    try:
+        total_loans_count = Emprestimo.objects.count()
+    except:
+        total_loans_count = 0
     
     # Calculate overdue loans
     overdue_count = 0
@@ -151,7 +162,7 @@ def browse_collection(request):
     stats = {
         'total_books': total_unique_books,
         'available': available_exemplars,
-        'borrowed': borrowed_exemplars,
+        'borrowed': total_loans_count,  # Now shows total loans instead of borrowed books
         'overdue': overdue_count
     }
 
@@ -161,14 +172,32 @@ def browse_collection(request):
 
     current_page_books = unique_books_query[start_index:end_index]
 
+    # Get representative books for the current page in a single query
+    current_page_titles_authors = [(book['titulo'], book['autor']) for book in current_page_books]
+    
+    if current_page_titles_authors:
+        # Build Q objects for filtering
+        q_objects = Q()
+        for titulo, autor in current_page_titles_authors:
+            q_objects |= Q(titulo=titulo, autor=autor)
+        
+        rep_books_query = livros_query.filter(q_objects).order_by('titulo', 'autor', 'id_livro')
+    else:
+        rep_books_query = livros_query.none()
+    
+    # Create a lookup dict for representative books (first book per title/author)
+    rep_books_dict = {}
+    for book in rep_books_query:
+        key = (book.titulo, book.autor)
+        if key not in rep_books_dict:
+            rep_books_dict[key] = book
+
     books_list = []
     for book_data in current_page_books:
-        representative_book = livros_query.filter(
-            titulo=book_data['titulo'],
-            autor=book_data['autor']
-        ).first()
-
-        category_name = book_data['genero'] or 'Outros'
+        # Get the representative book from the dict
+        representative_book = rep_books_dict.get((book_data['titulo'], book_data['autor']))
+        
+        category_name = representative_book.genero or 'Outros' if representative_book else 'Outros'
         
         # Get the appropriate icon for the category with better matching
         icon_url = None
@@ -194,9 +223,9 @@ def browse_collection(request):
             'category': category_name,
             'category_lower': category_name.lower(),
             'icon_url': icon_url,
-            'year': book_data['ano'],
-            'publisher': book_data['editora'],
-            'description': book_data['descricao'],
+            'year': representative_book.ano if representative_book else None,
+            'publisher': representative_book.editora if representative_book else '',
+            'description': representative_book.descricao if representative_book else '',
             'total_count': book_data['total_count'],
             'available_count': book_data['available_count'],
             'available': book_data['available_count'] > 0,
@@ -271,7 +300,11 @@ def browse_collection(request):
         'total_books': total_unique_books,
         'total_exemplars': total_exemplars,
         'available_exemplars': available_exemplars,
-        'stats': stats
+        'stats': stats,
+        'current_year': get_current_year(),
+        'max_book_year': get_max_book_year(),
+        'max_book_copies': get_max_book_copies(),
+        'default_book_copies': get_default_book_copies()
     }
 
     return render(request, 'browse_collection.html', context)
@@ -294,23 +327,51 @@ def manage_users(request):
         if user.is_superuser and not request.user.is_superuser:
             can_edit = False
         
+        # Get user status based on the unified status field
+        user_status = user.get_status_display() if hasattr(user, 'status') else 'Ativo'
+        
+        # Debug mode: simulate blocked user for testing
+        # This makes the first reader appear as blocked for testing the filter
+        if request.GET.get('debug_blocked') == '1' and user.role == 'reader' and users.filter(role='reader').first() == user:
+            user_status = 'Bloqueado'
+        
         user_data.append({
             'id': user.id,
             'initials': initials,
             'name': user.get_full_name() or user.username,
             'email': user.email,
             'role': user.get_role_display(),
-            'active': user.is_active,
+            'status': user_status,
             'last_login': user.last_login.strftime('%d/%m/%Y, %H:%M') if user.last_login else 'Nunca',
             'is_superuser': user.is_superuser,
             'can_edit': can_edit
         })
 
+    # Calculate status-based counts safely
+    active_count = 0
+    inactive_count = 0
+    blocked_count = 0
+    
+    try:
+        active_count = users.filter(status=User.Status.ACTIVE).count()
+        inactive_count = users.filter(status=User.Status.INACTIVE).count()
+        blocked_count = users.filter(status=User.Status.BLOCKED).count()
+    except Exception:
+        # Fallback to is_active field if status field doesn't exist yet
+        active_count = users.filter(is_active=True).count()
+        inactive_count = users.filter(is_active=False).count()
+        blocked_count = 0
+    
+    # Debug mode: add 1 to blocked count if simulating blocked user
+    if request.GET.get('debug_blocked') == '1':
+        blocked_count += 1
+        active_count -= 1 if active_count > 0 else 0
+    
     stats = {
         'total': users.count(),
-        'admin': users.filter(role='admin').count(),
-        'librarian': users.filter(role='librarian').count(),
-        'reader': users.filter(role='reader').count()
+        'active': active_count,
+        'inactive': inactive_count,
+        'blocked': blocked_count
     }
 
     return render(request, 'manage_users.html', {
@@ -341,6 +402,10 @@ def update_user(request, user_id):
         
         data = json.loads(request.body)
 
+        # Handle regularization workflow for blocked users
+        if 'regularization_method' in data and user.status == User.Status.BLOCKED:
+            return handle_user_regularization(request, user, data)
+
         if 'role' in data:
             role_map = {
                 'Leitor': 'reader',
@@ -349,8 +414,17 @@ def update_user(request, user_id):
             }
             user.role = role_map.get(data['role'], 'reader')
 
-        if 'active' in data:
-            user.is_active = data['active']
+        if 'status' in data:
+            status_map = {
+                'Ativo': User.Status.ACTIVE,
+                'Inativo': User.Status.INACTIVE,
+                'Bloqueado': User.Status.BLOCKED
+            }
+            new_status = status_map.get(data['status'])
+            if new_status:
+                user.status = new_status
+                # Also update is_active based on status for compatibility
+                user.is_active = (new_status == User.Status.ACTIVE)
 
         user.save()
 
@@ -363,6 +437,125 @@ def update_user(request, user_id):
         return JsonResponse({
             'success': False,
             'message': f'Erro ao atualizar usuário: {str(e)}'
+        }, status=500)
+
+
+def handle_user_regularization(request, user, data):
+    """Handle the regularization workflow for blocked users"""
+    try:
+        # Validate regularization method
+        regularization_method = data.get('regularization_method')
+        if not regularization_method:
+            return JsonResponse({
+                'success': False,
+                'message': 'Método de regularização é obrigatório.'
+            }, status=400)
+        
+        # Get the damage report that caused the block
+        try:
+            damage_report = DamageReport.objects.filter(user=user).latest('reported_at')
+        except DamageReport.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Relatório de dano não encontrado para este usuário.'
+            }, status=404)
+        
+        # Check if already regularized
+        if hasattr(damage_report, 'regularization'):
+            return JsonResponse({
+                'success': False,
+                'message': 'Este usuário já foi regularizado anteriormente.'
+            }, status=400)
+        
+        # Begin transaction to ensure data consistency
+        with transaction.atomic():
+            # Create regularization record
+            regularization = UserRegularization.objects.create(
+                damage_report=damage_report,
+                user=user,
+                administrator=request.user,
+                method=regularization_method,
+                notes=data.get('regularization_notes', '').strip()
+            )
+            
+            # Unblock the user
+            user.status = User.Status.ACTIVE
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Usuário "{user.get_full_name() or user.username}" foi regularizado e desbloqueado com sucesso! O usuário já pode realizar novos empréstimos.',
+                'regularized': True
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao processar regularização: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_user_damage_info(request, user_id):
+    """Get damage information for a blocked user"""
+    if not (request.user.is_superuser or request.user.role == 'admin'):
+        return JsonResponse({
+            'success': False,
+            'message': 'Acesso negado.'
+        }, status=403)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+        
+        # Only get damage info for blocked users
+        if user.status != User.Status.BLOCKED:
+            return JsonResponse({
+                'success': False,
+                'message': 'Este usuário não está bloqueado.'
+            }, status=400)
+        
+        # Get the latest damage report
+        try:
+            damage_report = DamageReport.objects.filter(user=user).latest('reported_at')
+            
+            # Check if already regularized
+            is_regularized = hasattr(damage_report, 'regularization')
+            
+            damage_info = {
+                'book_title': damage_report.book.titulo,
+                'book_author': damage_report.book.autor,
+                'description': damage_report.description,
+                'reported_date': damage_report.reported_at.strftime('%d/%m/%Y'),
+                'reported_by': damage_report.reported_by.username,
+                'is_regularized': is_regularized
+            }
+            
+            if is_regularized:
+                regularization = damage_report.regularization
+                damage_info['regularization_info'] = {
+                    'method': regularization.get_method_display(),
+                    'regularized_at': regularization.regularized_at.strftime('%d/%m/%Y'),
+                    'administrator': regularization.administrator.username,
+                    'notes': regularization.notes
+                }
+            
+            return JsonResponse({
+                'success': True,
+                'damage_info': damage_info
+            })
+            
+        except DamageReport.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Relatório de dano não encontrado.'
+            }, status=404)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao obter informações: {str(e)}'
         }, status=500)
 
 
@@ -387,63 +580,77 @@ def edit_book(request, book_id):
             'ano': book.ano,
             'editora': book.editora,
             'genero': book.genero,
+            'descricao': book.descricao,
             'total_count': total_copies
         }
         
         if request.method == 'POST':
             form = EditBookForm(book_data, request.POST)
             if form.is_valid():
-                # Update all books with same title and author
-                title = form.cleaned_data['title']
-                author = form.cleaned_data['author']
-                year = form.cleaned_data['year']
-                publisher = form.cleaned_data['publisher']
-                category = form.cleaned_data['category']
-                new_copies = form.cleaned_data['copies']
-                
-                # Update existing books
-                same_books.update(
-                    titulo=title,
-                    autor=author,
-                    ano=year,
-                    editora=publisher,
-                    genero=category
-                )
-                
-                # Handle copies count change
-                current_copies = same_books.count()
-                if new_copies > current_copies:
-                    # Add more copies
-                    copies_to_add = new_copies - current_copies
-                    for _ in range(copies_to_add):
-                        Livros.objects.create(
+                try:
+                    with transaction.atomic():
+                        # Update all books with same title and author
+                        title = form.cleaned_data['title']
+                        author = form.cleaned_data['author']
+                        year = form.cleaned_data['year']
+                        publisher = form.cleaned_data['publisher']
+                        category = form.cleaned_data['category']
+                        description = form.cleaned_data['description']
+                        new_copies = form.cleaned_data['copies']
+                        
+                        # Handle copies count change BEFORE updating existing books
+                        current_copies = same_books.count()
+                        
+                        # Update existing books
+                        same_books.update(
                             titulo=title,
                             autor=author,
                             ano=year,
                             editora=publisher,
                             genero=category,
-                            status_livro='Disponível'
+                            descricao=description
                         )
-                elif new_copies < current_copies:
-                    # Remove excess copies (only available ones)
-                    copies_to_remove = current_copies - new_copies
-                    available_books = same_books.filter(status_livro='Disponível')
+                        
+                        if new_copies > current_copies:
+                            # Add more copies
+                            copies_to_add = new_copies - current_copies
+                            for _ in range(copies_to_add):
+                                Livros.objects.create(
+                                    titulo=title,
+                                    autor=author,
+                                    ano=year,
+                                    editora=publisher,
+                                    genero=category,
+                                    descricao=description,
+                                    status_livro='Disponível'
+                                )
+                        elif new_copies < current_copies:
+                            # Remove excess copies (only available ones)
+                            # Re-query the books after update to get the correct status
+                            updated_books = Livros.objects.filter(titulo=title, autor=author)
+                            copies_to_remove = current_copies - new_copies
+                            available_books = updated_books.filter(status_livro='Disponível')
+                            
+                            if available_books.count() < copies_to_remove:
+                                return JsonResponse({
+                                    'success': False, 
+                                    'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
+                                })
+                            
+                            # Remove the excess available copies
+                            books_to_delete = available_books[:copies_to_remove]
+                            for book_to_delete in books_to_delete:
+                                book_to_delete.delete()
                     
-                    if available_books.count() < copies_to_remove:
-                        return JsonResponse({
-                            'success': False, 
-                            'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
-                        })
-                    
-                    # Remove the excess available copies
-                    books_to_delete = available_books[:copies_to_remove]
-                    for book_to_delete in books_to_delete:
-                        book_to_delete.delete()
-                
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Livro "{title}" atualizado com sucesso!'
-                })
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Livro "{title}" atualizado com sucesso!'
+                    })
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Erro ao processar solicitação: {str(e)}'
+                    })
             else:
                 # Return form errors
                 errors = []
@@ -660,29 +867,133 @@ def manage_loans(request):
 
 
 @login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def return_book(request, loan_id):
     emprestimo = get_object_or_404(Emprestimo, id=loan_id)
 
     # Check if reader is trying to return someone else's book
     if request.user.role == 'reader' and str(emprestimo.id_usuario) != str(request.user.id):
+        if request.method == 'GET':
+            return JsonResponse({
+                'success': False,
+                'message': 'Você só pode devolver seus próprios livros.'
+            }, status=403)
         messages.error(request, 'Você só pode devolver seus próprios livros.')
         return redirect('manage_loans')
 
     if emprestimo.data_fim:
+        if request.method == 'GET':
+            return JsonResponse({
+                'success': False,
+                'message': 'Este livro já foi devolvido.'
+            }, status=400)
         messages.warning(request, 'Este livro já foi devolvido.')
         return redirect('manage_loans')
 
-    emprestimo.data_fim = timezone.now().date()
-    emprestimo.save()
+    # GET request: Return modal data for display
+    if request.method == 'GET':
+        try:
+            book = Livros.objects.get(id_livro=emprestimo.id_livro)
+            user = User.objects.get(id=emprestimo.id_usuario)
+            
+            return JsonResponse({
+                'success': True,
+                'loan_data': {
+                    'loan_id': emprestimo.id,
+                    'book_title': book.titulo,
+                    'book_author': book.autor,
+                    'user_name': user.username,
+                    'start_date': emprestimo.data_inicio.strftime('%d/%m/%Y') if emprestimo.data_inicio else 'N/A',
+                    'due_date': emprestimo.data_entrega.strftime('%d/%m/%Y') if emprestimo.data_entrega else 'N/A'
+                }
+            })
+        except (Livros.DoesNotExist, User.DoesNotExist):
+            return JsonResponse({
+                'success': False,
+                'message': 'Dados do empréstimo não encontrados.'
+            }, status=404)
 
-    try:
-        book = Livros.objects.get(id_livro=emprestimo.id_livro)
-        book.status_livro = 'Disponível'
-        book.save()
-        messages.success(request, f'Livro "{book.titulo}" devolvido com sucesso!')
-    except Livros.DoesNotExist:
-        messages.success(request, 'Empréstimo finalizado.')
+    # POST request: Process return with optional damage report
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            is_damaged = data.get('is_damaged', False)
+            damage_description = data.get('damage_description', '').strip()
+
+            # Validate damage description if book is damaged
+            if is_damaged and not damage_description:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'A descrição do dano é obrigatória quando o livro é marcado como danificado.'
+                }, status=400)
+
+            # Begin transaction to ensure data consistency
+            with transaction.atomic():
+                # Complete the return
+                emprestimo.data_fim = timezone.now().date()
+                emprestimo.save()
+
+                # Update book status
+                try:
+                    book = Livros.objects.get(id_livro=emprestimo.id_livro)
+                    book.status_livro = 'Disponível'
+                    book.save()
+                except Livros.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Livro não encontrado no sistema.'
+                    }, status=404)
+
+                # If book is damaged, create damage report and block user
+                if is_damaged:
+                    try:
+                        user = User.objects.get(id=emprestimo.id_usuario)
+                        
+                        # Create damage report
+                        damage_report = DamageReport.objects.create(
+                            emprestimo=emprestimo,
+                            user=user,
+                            book=book,
+                            description=damage_description,
+                            reported_by=request.user
+                        )
+                        
+                        # Block the user
+                        user.status = User.Status.BLOCKED
+                        user.save()
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Livro "{book.titulo}" devolvido com registro de dano. Usuário "{user.username}" foi automaticamente bloqueado.',
+                            'user_blocked': True
+                        })
+                        
+                    except User.DoesNotExist:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Usuário não encontrado no sistema.'
+                        }, status=404)
+                else:
+                    # Normal return without damage
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Livro "{book.titulo}" devolvido com sucesso!',
+                        'user_blocked': False
+                    })
+
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Dados inválidos enviados na requisição.'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Erro interno do servidor: {str(e)}'
+            }, status=500)
     
+    # Fallback redirect for non-AJAX requests
     return redirect('manage_loans')
 
 
@@ -954,7 +1265,10 @@ def autocomplete_users(request):
         status_text = ""
         is_eligible = True
         
-        if overdue_loans >= 2:
+        if user.status == User.Status.BLOCKED:
+            status_text = " - Bloqueado por dano ❌"
+            is_eligible = False
+        elif overdue_loans >= 2:
             status_text = f" - {overdue_loans} empréstimos atrasados ❌"
             is_eligible = False
         elif overdue_loans >= 1:
@@ -994,37 +1308,39 @@ def search_existing_books(request):
     if len(query) < 2:
         return JsonResponse({'results': []})
     
-    # Use the same grouping logic as browse_collection
-    from django.db.models import Count, Case, When, IntegerField
+    # Use the same representative book ID logic as browse_collection
+    from django.db.models import Count, Min
     
     livros_query = Livros.objects.filter(
         Q(titulo__icontains=query) | Q(autor__icontains=query)
     )
     
-    # Group by title and author to get unique book information (same logic as browse_collection)
-    unique_books_query = livros_query.values(
-        'titulo', 'autor', 'genero', 'ano', 'editora'
-    ).annotate(
-        total_count=Count('id_livro')
+    # Get representative books using the same logic as browse_collection
+    representative_books = livros_query.values('titulo', 'autor').annotate(
+        representative_id=Min('id_livro')
     ).order_by('titulo', 'autor')[:10]
     
     results = []
-    for book_data in unique_books_query:
-        # Get a representative book for the ID
-        representative_book = livros_query.filter(
-            titulo=book_data['titulo'],
-            autor=book_data['autor']
-        ).first()
-        
-        results.append({
-            'id': representative_book.id_livro if representative_book else None,
-            'title': book_data['titulo'],
-            'author': book_data['autor'],
-            'category': book_data['genero'] or '',
-            'year': book_data['ano'],
-            'publisher': book_data['editora'] or '',
-            'total_copies': book_data['total_count']
-        })
+    for book_group in representative_books:
+        # Get the representative book
+        representative_book = livros_query.filter(id_livro=book_group['representative_id']).first()
+        if representative_book:
+            # Count total copies for this title/author
+            total_count = livros_query.filter(
+                titulo=book_group['titulo'], 
+                autor=book_group['autor']
+            ).count()
+            
+            results.append({
+                'id': representative_book.id_livro,
+                'title': representative_book.titulo,
+                'author': representative_book.autor,
+                'category': representative_book.genero or '',
+                'year': representative_book.ano,
+                'publisher': representative_book.editora or '',
+                'description': representative_book.descricao or '',
+                'total_copies': total_count
+            })
     
     return JsonResponse({'results': results})
 
@@ -1064,229 +1380,401 @@ def autocomplete_books(request):
 
 
 @login_required
-def generate_pdf_report(request):
-    # Segurança: Apenas administrador ou bibliotecário
-    if request.user.role == 'reader':
-        return HttpResponse("Acesso Negado: Privilégios insuficientes.", status=403)
+def exportar_relatorio_pdf(request):
+    if request.user.role == 'reader' and not request.user.is_superuser:
+        messages.error(request, "Você não tem permissão para acessar este relatório.")
+        return redirect('dashboard')
 
-    # 1. CAPTURA DOS FILTROS DO MODAL GET
-    data_de = request.GET.get('data_de')
-    data_ate = request.GET.get('data_ate')
-    categoria = request.GET.get('categoria')
-    status_filtro = request.GET.get('status_filtro')
-
-    hoje = timezone.now().date()
-
-    # 2. CONFIGURAÇÃO DA RESPOSTA HTTP (DOWNLOAD DIRETO)
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_LUMEN_{hoje.strftime("%d_%m_%Y")}.pdf"'
+    filename = f"relatorio_gerencial_{date.today().strftime('%Y%m%d')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-    # 3. CRIAÇÃO DO DOCUMENTO EM MEMÓRIA
     doc = SimpleDocTemplate(
-        response, 
+        response,
         pagesize=A4,
-        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=50
-    )
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=20, 
-        textColor=colors.HexColor('#23395d'), alignment=1, spaceAfter=15
-    )
-    subtitle_style = ParagraphStyle(
-        'SubTitleStyle', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=11, 
-        textColor=colors.HexColor('#444444'), alignment=1, spaceAfter=20
-    )
-    h2_style = ParagraphStyle(
-        'H2Style', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=13, 
-        textColor=colors.HexColor('#23395d'), spaceBefore=15, spaceAfter=10
-    )
-    body_style = ParagraphStyle(
-        'BodyStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, textColor=colors.black
-    )
-    danger_style = ParagraphStyle(
-        'DangerStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#c0392b')
-    )
-    filter_style = ParagraphStyle(
-        'FilterStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#555555')
+        leftMargin=42,
+        rightMargin=42,
+        topMargin=42,
+        bottomMargin=42
     )
 
     story = []
 
-    # Cabeçalho
-    story.append(Paragraph("LUMEN — BIBLIOTECA DIGITAL", title_style))
-    story.append(Paragraph("Relatório de Auditoria e Apoio à Tomada de Decisão", subtitle_style))
-    
-    p_de = data_de if data_de else "Início"
-    p_ate = data_ate if data_ate else "Hoje"
-    cat_txt = categoria if categoria else "Todas"
-    story.append(Paragraph(f"<b>Filtros Ativos:</b> Período: {p_de} até {p_ate} | Gênero: {cat_txt}", filter_style))
+    data_de = request.GET.get('data_de')
+    data_ate = request.GET.get('data_ate')
+    categoria = request.GET.get('categoria')
+    status_filtro = request.GET.get('status_filtro', 'todos')
+
+    emprestimos = Emprestimo.objects.all()
+
+    if data_de:
+        emprestimos = emprestimos.filter(data_inicio__gte=data_de)
+
+    if data_ate:
+        emprestimos = emprestimos.filter(data_inicio__lte=data_ate)
+
+    livros = Livros.objects.all()
+
+    if categoria:
+        livros = livros.filter(genero__icontains=categoria)
+
+    active_ids = set(
+        str(x) for x in emprestimos.filter(data_fim__isnull=True)
+        .values_list('id_livro', flat=True)
+    )
+
+    overdue_ids = set(
+        str(x) for x in emprestimos.filter(
+            data_fim__isnull=True,
+            data_entrega__lt=date.today()
+        ).values_list('id_livro', flat=True)
+    )
+
+    if status_filtro == 'disponiveis':
+        livros = livros.exclude(id_livro__in=active_ids)
+
+    elif status_filtro == 'atrasados':
+        livros = livros.filter(id_livro__in=overdue_ids)
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        leading=28,
+        textColor=colors.HexColor('#23395d'),
+        alignment=1,
+        spaceAfter=6
+    )
+
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#6b7a99'),
+        alignment=1,
+        spaceAfter=20
+    )
+
+    h2_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        leading=18,
+        textColor=colors.HexColor('#23395d'),
+        spaceBefore=14,
+        spaceAfter=10,
+        keepWithNext=True
+    )
+
+    body_style = ParagraphStyle(
+        'BodyTextCustom',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#1e2a45')
+    )
+
+    bold_body_style = ParagraphStyle(
+        'BodyTextBold',
+        parent=body_style,
+        fontName='Helvetica-Bold'
+    )
+
+    danger_style = ParagraphStyle(
+        'DangerText',
+        parent=body_style,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#d32f2f')
+    )
+
+    story.append(Paragraph("BIBLIOTECA LUMEN", title_style))
+
+    data_hora = timezone.localtime().strftime('%d/%m/%Y às %H:%M')
+    story.append(
+        Paragraph(
+            f"Relatório Gerencial de Ativos — Gerado em {data_hora}",
+            subtitle_style
+        )
+    )
+
+    line_table = Table([[""]], colWidths=[510], rowHeights=[2])
+    line_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#23395d'))
+    ]))
+
+    story.append(line_table)
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 1: SITUAÇÃO DE LIVROS (QUANTITATIVOS)
+    # SEÇÃO 1: MÉTRICAS GERAIS
     # ==========================================
-    story.append(Paragraph("1. Situação de Inventário e Volumes Disponíveis", h2_style))
-    
-    livros_qs = Livros.objects.all()
-    if categoria:
-        livros_qs = livros_qs.filter(genero__icontains=categoria)
 
-    dados_livros = [["Livro / Autor", "Gênero", "Total", "Disponível", "Emprestada"]]
-    
-    # Mapeamento simples na memória para evitar Joins complexos que dão erro 500
-    todos_emprestimos_ativos = Emprestimo.objects.filter(data_fim__isnull=True)
-    
-    for livro in livros_qs:
-        # Conta quantos empréstimos ativos existem para o ID deste livro
-        total_emprestado = todos_emprestimos_ativos.filter(id_livro=livro.id_livro).count()
-        total_exemplares = 5 
-        disponivel = max(0, total_exemplares - total_emprestado)
-        
-        if status_filtro == 'disponiveis' and disponivel == 0:
-            continue
+    story.append(Paragraph("1. Resumo Executivo e Métricas Gerais", h2_style))
 
-        p_livro = Paragraph(f"<b>{livro.titulo}</b><br/><font color='#666666'>{livro.autor}</font>", body_style)
+    total_livros = livros.count()
+
+    total_emprestimos_ativos = emprestimos.filter(
+        data_fim__isnull=True
+    ).count()
+
+    total_atrasados = emprestimos.filter(
+        data_fim__isnull=True,
+        data_entrega__lt=date.today()
+    ).count()
+
+    total_usuarios = User.objects.count()
+
+    total_disponiveis = livros.exclude(
+        id_livro__in=active_ids
+    ).count()
+
+    dados_metricas = [
+        [
+            Paragraph("Métrica Gerencial", bold_body_style),
+            Paragraph("Quantidade Atual", bold_body_style)
+        ],
+        [
+            Paragraph("Total de Livros Cadastrados", body_style),
+            Paragraph(str(total_livros), body_style)
+        ],
+        [
+            Paragraph("Exemplares Disponíveis", body_style),
+            Paragraph(str(total_disponiveis), body_style)
+        ],
+        [
+            Paragraph("Exemplares Emprestados", body_style),
+            Paragraph(str(total_emprestimos_ativos), body_style)
+        ],
+        [
+            Paragraph("Usuários Registrados", body_style),
+            Paragraph(str(total_usuarios), body_style)
+        ],
+        [
+            Paragraph("Livros em Atraso", body_style),
+            Paragraph(
+                str(total_atrasados),
+                danger_style if total_atrasados > 0 else body_style
+            )
+        ],
+    ]
+
+    t_metricas = Table(
+        dados_metricas,
+        colWidths=[380, 130],
+        repeatRows=1
+    )
+
+    t_metricas.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('PADDING', (0, 0), (-1, -1), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+
+    story.append(t_metricas)
+    story.append(Spacer(1, 15))
+
+    # ==========================================
+    # SEÇÃO 2: INVENTÁRIO DO ACERVO
+    # ==========================================
+
+    story.append(Paragraph("2. Inventário do Acervo", h2_style))
+
+    dados_livros = [[
+        Paragraph("ID", bold_body_style),
+        Paragraph("Título", bold_body_style),
+        Paragraph("Autor", bold_body_style),
+        Paragraph("Gênero", bold_body_style),
+        Paragraph("Status", bold_body_style),
+    ]]
+
+    for livro in livros.order_by('titulo'):
+        livro_id = str(livro.id_livro)
+
+        if livro_id in active_ids:
+            status = "Emprestado"
+        else:
+            status = "Disponível"
+
         dados_livros.append([
-            p_livro, 
-            livro.genero if livro.genero else "-", 
-            str(total_exemplares), 
-            str(disponivel), 
-            str(total_emprestado)
+            Paragraph(str(livro.id_livro), body_style),
+            Paragraph(livro.titulo or "-", body_style),
+            Paragraph(livro.autor or "-", body_style),
+            Paragraph(livro.genero or "-", body_style),
+            Paragraph(status, body_style),
         ])
 
     if len(dados_livros) > 1:
-        t_livros = Table(dados_livros, colWidths=[200, 110, 60, 70, 70])
+        t_livros = Table(
+            dados_livros,
+            colWidths=[45, 180, 115, 85, 85],
+            repeatRows=1
+        )
+
         t_livros.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
+
         story.append(t_livros)
     else:
-        story.append(Paragraph("Nenhum registro de acervo compatível.", body_style))
+        story.append(Paragraph("Nenhum livro encontrado com os filtros selecionados.", body_style))
 
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 2: LIVROS MAIS EMPRESTADOS (RANKING)
+    # SEÇÃO 3: RANKING DE LIVROS MAIS EMPRESTADOS
     # ==========================================
-    story.append(Paragraph("2. Livros Mais Emprestados (Top de Circulação)", h2_style))
-    
-    historico_emprestimos = Emprestimo.objects.all()
-    if data_de:
-        historico_emprestimos = historico_emprestimos.filter(data_inicio__gte=data_de)
-    if data_ate:
-        historico_emprestimos = historico_emprestimos.filter(data_inicio__lte=data_ate)
 
-    # Agrupamos os IDs mais emprestados de forma totalmente compatível com o seu banco
-    ranking_ids = (
-        historico_emprestimos.values('id_livro')
-        .annotate(total_saidas=Count('id_emprestimo'))
+    story.append(Paragraph("3. Ranking de Obras Mais Retiradas (Top 5)", h2_style))
+
+    livros_populares = (
+        emprestimos
+        .values('id_livro')
+        .annotate(total_saidas=Count('id'))
         .order_by('-total_saidas')[:5]
     )
 
-    dados_rank = [["Posição", "Livro / Autor", "Gênero", "Total Saídas"]]
-    for idx, r in enumerate(ranking_ids, start=1):
-        try:
-            livro_obj = Livros.objects.get(id_livro=r['id_livro'])
-            p_rank = Paragraph(f"<b>{livro_obj.titulo}</b><br/><font color='#666666'>{livro_obj.autor}</font>", body_style)
-            dados_rank.append([
-                f"{idx}º", 
-                p_rank, 
-                livro_obj.genero if livro_obj.genero else "-", 
-                f"{r['total_saidas']} saídas"
-            ])
-        except Livros.DoesNotExist:
-            continue
+    dados_ranking = [[
+        Paragraph("Código", bold_body_style),
+        Paragraph("Título da Obra / Autor", bold_body_style),
+        Paragraph("Total de Retiradas", bold_body_style)
+    ]]
 
-    if len(dados_rank) > 1:
-        t_rank = Table(dados_rank, colWidths=[60, 250, 110, 90])
-        t_rank.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (0,0), (0,-1), 'CENTER'),
-            ('ALIGN', (3,0), (3,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    for item in livros_populares:
+        id_livro_str = str(item['id_livro'])
+        total_saidas = item['total_saidas']
+
+        try:
+            livro_obj = Livros.objects.get(id_livro=int(id_livro_str))
+            info_livro = (
+                f"<b>{livro_obj.titulo}</b><br/>"
+                f"<font color='#6b7a99'>{livro_obj.autor}</font>"
+            )
+        except (Livros.DoesNotExist, ValueError, TypeError):
+            info_livro = f"Livro Não Identificado (ID: {id_livro_str})"
+
+        dados_ranking.append([
+            Paragraph(id_livro_str, body_style),
+            Paragraph(info_livro, body_style),
+            Paragraph(f"{total_saidas} vezes", body_style)
+        ])
+
+    if len(dados_ranking) > 1:
+        t_ranking = Table(
+            dados_ranking,
+            colWidths=[70, 310, 130],
+            repeatRows=1
+        )
+
+        t_ranking.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
-        story.append(t_rank)
+
+        story.append(t_ranking)
     else:
-        story.append(Paragraph("Não houve movimentações de saída para estes critérios.", body_style))
+        story.append(Paragraph("Nenhuma movimentação de empréstimo registrada.", body_style))
 
     story.append(Spacer(1, 15))
 
     # ==========================================
-    # SEÇÃO 3: USUÁRIOS COM DEVOLUÇÃO EM ATRASO
+    # SEÇÃO 4: USUÁRIOS INADIMPLENTES
     # ==========================================
-    story.append(Paragraph("3. Usuários Inadimplentes (Com Devoluções em Atraso)", h2_style))
-    
-    dados_atrasados = [["Leitor / Contato", "Obra Alocada", "Data Vencimento", "Dias em Atraso"]]
-    
-    # Coleta empréstimos abertos cujo prazo de entrega já expirou
-    emprestimos_atrasados_qs = Emprestimo.objects.filter(data_fim__isnull=True, data_entrega__lt=hoje)
-    
-    for emp in emprestimos_atrasados_qs:
-        dias = (hoje - emp.data_entrega).days
-        
-        # Fazemos a busca manual e controlada por ID (Livre de Erros 500 de FK)
-        u_nome = "Desconhecido"
-        u_email = "Sem e-mail"
-        if emp.id_usuario_id:
-            try:
-                usr = User.objects.get(id=emp.id_usuario_id)
-                u_nome = usr.username
-                u_email = usr.email
-            except User.DoesNotExist:
-                pass
-                
-        livro_tit = "Desconhecido"
-        if emp.id_livro_id:
-            try:
-                livro_tit = Livros.objects.get(id_livro=emp.id_livro_id).titulo
-            except Livros.DoesNotExist:
-                pass
-        
-        p_user = Paragraph(f"<b>{u_nome}</b><br/><font color='#666666'>{u_email}</font>", body_style)
-        
+
+    story.append(Paragraph("4. Usuários Inadimplentes (Com Devoluções em Atraso)", h2_style))
+
+    emprestimos_atrasados = emprestimos.filter(
+        data_fim__isnull=True,
+        data_entrega__lt=date.today()
+    ).order_by('data_entrega')
+
+    dados_atrasados = [[
+        Paragraph("Leitor / Usuário", bold_body_style),
+        Paragraph("Obra Retirada", bold_body_style),
+        Paragraph("Prazo Limite", bold_body_style),
+        Paragraph("Dias de Atraso", bold_body_style)
+    ]]
+
+    for emp in emprestimos_atrasados:
+        try:
+            user_obj = User.objects.get(id=int(emp.id_usuario))
+            info_user = (
+                f"<b>{user_obj.get_full_name() or user_obj.username}</b><br/>"
+                f"<font color='#6b7a99'>{user_obj.email}</font>"
+            )
+        except (User.DoesNotExist, ValueError, TypeError):
+            info_user = f"ID Usuário: {emp.id_usuario}"
+
+        try:
+            livro_obj = Livros.objects.get(id_livro=int(emp.id_livro))
+            info_livro = livro_obj.titulo
+        except (Livros.DoesNotExist, ValueError, TypeError):
+            info_livro = f"ID Livro: {emp.id_livro}"
+
+        dias_atraso = (date.today() - emp.data_entrega).days
+
         dados_atrasados.append([
-            p_user, 
-            livro_tit, 
-            emp.data_entrega.strftime("%d/%m/%Y"), 
-            Paragraph(f"{dias} dias", danger_style)
+            Paragraph(info_user, body_style),
+            Paragraph(info_livro, body_style),
+            Paragraph(emp.data_entrega.strftime("%d/%m/%Y"), body_style),
+            Paragraph(f"{dias_atraso} dias", danger_style)
         ])
 
     if len(dados_atrasados) > 1:
-        t_atraso = Table(dados_atrasados, colWidths=[160, 160, 100, 90])
+        t_atraso = Table(
+            dados_atrasados,
+            colWidths=[160, 160, 100, 90],
+            repeatRows=1
+        )
+
         t_atraso.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#eaeef4')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#23395d')),
-            ('ALIGN', (2,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#d3dfee')),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeef4')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d3dfee')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
+
         story.append(t_atraso)
     else:
-        story.append(Paragraph("Nenhuma pendência ou atraso crítico listado no momento.", body_style))
+        story.append(Paragraph("Nenhum usuário com atraso no momento.", body_style))
 
-    # Rodapé Dinâmico
-    def add_footer(canvas, doc):
+    def adicionar_rodape(canvas, doc):
         canvas.saveState()
+
         canvas.setFont('Helvetica', 9)
-        canvas.setFillColor(colors.HexColor('#555555'))
-        canvas.drawString(40, 30, "LUMEN — Sistema de Gerenciamento de Biblioteca")
-        
-        agora_str = timezone.now().strftime("%d/%m/%Y %H:%M")
-        canvas.drawRightString(A4[0] - 40, 30, f"Gerado em: {agora_str} — Página {doc.page}")
+        canvas.setFillColor(colors.HexColor('#6b7a99'))
+
+        canvas.setStrokeColor(colors.HexColor('#eaeef4'))
+        canvas.setLineWidth(0.5)
+        canvas.line(42, 50, 553, 50)
+
+        data_geracao = timezone.localtime().strftime("%d/%m/%Y %H:%M:%S")
+
+        canvas.drawString(42, 38, f"Gerado em: {data_geracao}")
+        canvas.drawRightString(553, 38, f"Página {doc.page}")
+
         canvas.restoreState()
 
-    # Compilação
-    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
-    
+    doc.build(
+        story,
+        onFirstPage=adicionar_rodape,
+        onLaterPages=adicionar_rodape
+    )
+
     return response

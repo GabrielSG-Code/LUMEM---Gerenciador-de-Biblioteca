@@ -22,45 +22,53 @@
   <!-- Header with Title and Action Buttons -->
   <div class="loans-header">
     <h1>Gerenciar Empréstimos</h1>
+
     <div class="header-actions">
       <div class="dropdown">
-        <button type="button" class="btn-loan-config dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <button type="button"
+                class="btn-loan-config dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
             <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
           </svg>
           Funções
         </button>
+
         <ul class="dropdown-menu dropdown-menu-end">
+
           <li>
-            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#newLoanModal">
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-              </svg>
+            <button type="button"
+                    class="dropdown-item"
+                    data-bs-toggle="modal"
+                    data-bs-target="#newLoanModal">
               Novo Empréstimo
             </button>
           </li>
+
           <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#reportFilterModal">
-                <svg width="16" height="16" fill="currentColor" class="bi bi-file-earmark-pdf me-2" viewBox="0 0 16 16">
-                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
-                    <path d="M4.603 14.087a.8.8 0 0 1-.438-.42c-.046-.115-.046-.305.07-.633l.405-1.121c.122-.339.317-.765.553-1.237-.19-.415-.355-.867-.47-1.34a6 6 0 0 1-.307-1.55c0-.428.072-.816.224-1.15.174-.377.496-.64.9-.64.44 0 .765.279.932.645.154.339.224.744.224 1.184 0 .446-.07.925-.216 1.417a8 8 0 0 1 .517 1.345c.46-.2.912-.428 1.336-.672.07-.04.148-.078.225-.116.486-.241.94-.434 1.35-.5a.86.86 0 0 1 .521.092c.257.163.4.453.395.787a.8.8 0 0 1-.254.55c-.246.236-.645.35-1.17.35-.42 0-.915-.105-1.464-.31a16 16 0 0 1-1.34.586c-.175.55-.37 1.058-.57 1.51-.154.347-.323.654-.494.904-.153.22-.34.428-.567.534a.8.8 0 0 1-.406.088M6.577 10.27l.168.4c.165.388.337.764.5 1.11L6.72 12.92a1.9 1.9 0 0 1-.132.32c-.053.092-.1.11-.133.11-.036 0-.074-.015-.106-.118a2.5 2.5 0 0 1-.09-.525c.01-.307.111-.756.28-1.296z"/>
-                </svg>
-                Gerar Relatório PDF
+            <a class="dropdown-item"
+              href="#"
+              data-bs-toggle="modal"
+              data-bs-target="#reportFilterModal">
+              Gerar Relatório PDF
             </a>
-        </li>
+          </li>
+
           {% if user.is_superuser or user.role == 'admin' %}
           <li><hr class="dropdown-divider"></li>
+
           <li>
-            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#loanConfigModal">
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
-                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
-              </svg>
-              Configs de Empréstimo
+            <button type="button"
+                    class="dropdown-item"
+                    data-bs-toggle="modal"
+                    data-bs-target="#loanConfigModal">
+              Configurações
             </button>
           </li>
           {% endif %}
+
         </ul>
       </div>
     </div>
@@ -69,7 +77,7 @@
   <!-- Search and Filters -->
   <div class="search-and-filters">
     <div class="search-container">
-      <input type="text" id="loansSearchInput" placeholder="Buscar por usuário..." class="search-input">
+      <input type="text" id="loansSearchInput" placeholder="Buscar por usuário..." class="search-input" maxlength="100">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
@@ -126,11 +134,11 @@
                 </td>
                 <td>
                   {% if not loan.return_date %}
-                    <a href="{% url 'return_book' loan.id %}" 
+                    <button 
                        class="btn-return"
-                       onclick="return confirm('Confirmar devolução?')">
+                       onclick="openReturnModal({{ loan.id }})">
                       Devolver
-                    </a>
+                    </button>
                   {% endif %}
                 </td>
               </tr>
@@ -295,7 +303,7 @@
         <h5 class="modal-title" id="reportFilterModalLabel">⚙️ Parâmetros do Relatório Gerencial</h5>
         <button type="button" class="btn-close" data-bs-dismiss="alert" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{% url 'generate_pdf_report' %}" method="GET" target="_blank" onsubmit="bootstrap.Modal.getInstance(document.getElementById('reportFilterModal')).hide();">
+      <form action="{% url 'exportar_relatorio_pdf' %}" method="GET" target="_blank">
         <div class="modal-body">
           <p class="text-muted small">Escolha os filtros abaixo. Caso deixe algum campo em branco, o sistema consolidará todos os dados históricos correspondentes.</p>
           
@@ -336,6 +344,111 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Return Book Modal -->
+<div class="modal fade" id="returnBookModal" tabindex="-1" aria-labelledby="returnBookModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="returnBookModalLabel">Devolução de Livro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Loading state -->
+        <div id="return-loading" class="text-center d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="mt-2">Carregando informações do empréstimo...</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="return-error" class="alert alert-danger d-none" role="alert">
+          <strong>Erro:</strong> <span id="return-error-message"></span>
+        </div>
+
+        <!-- Form content -->
+        <div id="return-form-content" class="d-none">
+          <div class="mb-3">
+            <h6>Informações do Empréstimo:</h6>
+            <table class="table table-sm">
+              <tr>
+                <td><strong>Usuário:</strong></td>
+                <td id="return-user-name"></td>
+              </tr>
+              <tr>
+                <td><strong>Livro:</strong></td>
+                <td id="return-book-title"></td>
+              </tr>
+              <tr>
+                <td><strong>Data de Início:</strong></td>
+                <td id="return-start-date"></td>
+              </tr>
+              <tr>
+                <td><strong>Data de Entrega:</strong></td>
+                <td id="return-due-date"></td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="mb-3">
+            <h6>Condição do Livro:</h6>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="book_condition" id="condition-good" value="good" checked>
+              <label class="form-check-label" for="condition-good">
+                <strong>Livro em boas condições</strong>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="book_condition" id="condition-damaged" value="damaged">
+              <label class="form-check-label" for="condition-damaged">
+                <strong>Livro foi devolvido com danos</strong>
+              </label>
+            </div>
+          </div>
+
+          <!-- Damage description field (hidden by default) -->
+          <div id="damage-description-section" class="mb-3 d-none">
+            <label for="damage-description" class="form-label">
+              <strong>Descrição dos Danos:</strong>
+              <span class="text-danger">*</span>
+            </label>
+            <textarea 
+              class="form-control" 
+              id="damage-description" 
+              name="damage_description" 
+              rows="4" 
+              placeholder="Ex: Páginas rasgadas (p. 15-20), capa danificada, riscos a caneta, páginas molhadas..." 
+              maxlength="1000"
+              required>
+            </textarea>
+            <div class="form-text">
+              <small>Seja específico sobre o tipo, localização e extensão dos danos. Esta informação será usada para avaliação e eventual cobrança.</small>
+            </div>
+            <div class="invalid-feedback" id="damage-description-error"></div>
+            <div class="form-text mt-1">
+              <span id="damage-char-count">0</span>/1000 caracteres
+            </div>
+          </div>
+
+          <!-- Warning for damage consequences -->
+          <div id="damage-warning" class="alert alert-warning d-none">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+              <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+            </svg>
+            <strong>Atenção:</strong> Ao registrar danos no livro, o usuário responsável será automaticamente bloqueado e não poderá realizar novos empréstimos.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="confirm-return-btn" class="btn btn-primary d-none" onclick="confirmReturn()">
+          Confirmar Devolução
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -411,23 +524,394 @@ document.getElementById('loanConfigModal').addEventListener('hidden.bs.modal', f
     messagesDiv.innerHTML = '';
 });
 
-// Set fixed dates: start date = today, delivery date = today + 7 days
+// Datas automáticas baseadas na configuração atual de empréstimo
 document.addEventListener('DOMContentLoaded', function() {
     const startDateInput = document.querySelector('input[name="data_inicio"]');
     const endDateInput = document.querySelector('input[name="data_entrega"]');
-    
+
+    const loanDurationDays = Number("{{ loan_config.loan_duration_days|default:7 }}");
+
     if (startDateInput && endDateInput) {
-        // Always set today's date for start date
-        const today = new Date();
-        const todayFormatted = today.toISOString().split('T')[0];
-        startDateInput.value = todayFormatted;
-        
-        // Calculate delivery date (today + 7 days)
-        const deliveryDate = new Date(today);
-        deliveryDate.setDate(deliveryDate.getDate() + 7);
-        const deliveryFormatted = deliveryDate.toISOString().split('T')[0];
-        endDateInput.value = deliveryFormatted;
+        try {
+            // Only set dates if they're not already set by Django
+            if (!startDateInput.value) {
+                const today = new Date();
+                const todayFormatted = today.toISOString().split('T')[0];
+                startDateInput.value = todayFormatted;
+            }
+            
+            if (!endDateInput.value) {
+                const today = new Date();
+                const deliveryDate = new Date(today);
+                deliveryDate.setDate(deliveryDate.getDate() + loanDurationDays);
+                const deliveryFormatted = deliveryDate.toISOString().split('T')[0];
+                endDateInput.value = deliveryFormatted;
+            }
+        } catch (error) {
+            console.warn('Error setting initial date values:', error);
+        }
     }
+    
+    // Set up return modal event listeners
+    setupReturnModalListeners();
+});
+
+// Return modal functionality
+let currentLoanId = null;
+
+function setupReturnModalListeners() {
+    // Remove existing listeners to prevent duplicates
+    document.querySelectorAll('input[name="book_condition"]').forEach(function(radio) {
+        radio.removeEventListener('change', handleBookConditionChange);
+    });
+    
+    // Listen for radio button changes
+    document.querySelectorAll('input[name="book_condition"]').forEach(function(radio) {
+        radio.addEventListener('change', handleBookConditionChange);
+    });
+    
+    // Add character count functionality
+    const damageDescription = document.getElementById('damage-description');
+    if (damageDescription) {
+        // Remove existing listeners
+        damageDescription.removeEventListener('input', updateCharacterCount);
+        damageDescription.removeEventListener('input', clearValidationError);
+        
+        // Add new listeners
+        damageDescription.addEventListener('input', updateCharacterCount);
+        damageDescription.addEventListener('input', clearValidationError);
+    }
+}
+
+function handleBookConditionChange() {
+    // Use setTimeout to ensure DOM is fully rendered
+    setTimeout(() => {
+        const damageSection = document.getElementById('damage-description-section');
+        const damageWarning = document.getElementById('damage-warning');
+        const confirmBtn = document.getElementById('confirm-return-btn');
+        const damageDescription = document.getElementById('damage-description');
+    
+    // Check minimum required elements (damage section and confirm button)
+    if (damageSection && confirmBtn) {
+        if (this.value === 'damaged') {
+            damageSection.classList.remove('d-none');
+            damageSection.style.display = 'block'; // Force show with inline style
+            
+            // Show warning if it exists
+            if (damageWarning) {
+                damageWarning.classList.remove('d-none');
+                damageWarning.style.display = 'block'; // Force show with inline style
+            }
+            
+            // Focus on the description field for better UX
+            setTimeout(() => {
+                if (damageDescription) damageDescription.focus();
+            }, 100);
+        } else {
+            damageSection.classList.add('d-none');
+            damageSection.style.display = 'none';
+            
+            // Hide warning if it exists
+            if (damageWarning) {
+                damageWarning.classList.add('d-none');
+                damageWarning.style.display = 'none';
+            }
+            
+            // Clear any previous error states and content
+            if (damageDescription) {
+                damageDescription.classList.remove('is-invalid');
+                damageDescription.value = '';
+                updateCharacterCount();
+            }
+        }
+        confirmBtn.classList.remove('d-none');
+        confirmBtn.style.display = 'inline-block'; // Force show button
+    }
+    }, 50); // Small delay to ensure DOM is ready
+}
+
+function clearValidationError() {
+    // Clear validation error when user starts typing
+    if (this.classList.contains('is-invalid')) {
+        this.classList.remove('is-invalid');
+        const errorDiv = document.getElementById('damage-description-error');
+        if (errorDiv) errorDiv.textContent = '';
+    }
+}
+
+function updateCharacterCount() {
+    const damageDescription = document.getElementById('damage-description');
+    const charCount = document.getElementById('damage-char-count');
+    if (damageDescription && charCount) {
+        const currentLength = damageDescription.value.length;
+        charCount.textContent = currentLength;
+        
+        // Change color based on usage
+        if (currentLength > 900) {
+            charCount.style.color = '#dc3545'; // Red when near limit
+        } else if (currentLength > 700) {
+            charCount.style.color = '#fd7e14'; // Orange when getting close
+        } else {
+            charCount.style.color = '#6c757d'; // Default gray
+        }
+    }
+}
+
+function openReturnModal(loanId) {
+    currentLoanId = loanId;
+    const modal = new bootstrap.Modal(document.getElementById('returnBookModal'));
+    
+    // Reset modal state
+    resetReturnModal();
+    
+    // Show loading state
+    showReturnLoadingState();
+    
+    // Show modal
+    modal.show();
+    
+    // Fetch loan data
+    fetch(`/accounts/loans/return/${loanId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateReturnModal(data.loan_data);
+            showReturnFormContent();
+            // Re-setup listeners after content is loaded
+            setupReturnModalListeners();
+        } else {
+            showReturnError(data.message);
+        }
+    })
+    .catch(error => {
+        showReturnError('Erro ao carregar informações do empréstimo.');
+    });
+}
+
+function resetReturnModal() {
+    // Reset radio buttons
+    const conditionGood = document.getElementById('condition-good');
+    const conditionDamaged = document.getElementById('condition-damaged');
+    if (conditionGood) conditionGood.checked = true;
+    if (conditionDamaged) conditionDamaged.checked = false;
+    
+    // Hide sections with null checks
+    const damageSection = document.getElementById('damage-description-section');
+    const damageWarning = document.getElementById('damage-warning');
+    const confirmBtn = document.getElementById('confirm-return-btn');
+    
+    if (damageSection) damageSection.classList.add('d-none');
+    if (damageWarning) damageWarning.classList.add('d-none');
+    if (confirmBtn) confirmBtn.classList.add('d-none');
+    
+    // Clear description and remove validation states
+    const damageDescription = document.getElementById('damage-description');
+    if (damageDescription) {
+        damageDescription.value = '';
+        damageDescription.classList.remove('is-invalid');
+    }
+    
+    // Reset character count
+    updateCharacterCount();
+    
+    // Clear error messages
+    const errorDiv = document.getElementById('damage-description-error');
+    if (errorDiv) errorDiv.textContent = '';
+    
+    // Reset visibility states
+    const returnLoading = document.getElementById('return-loading');
+    const returnError = document.getElementById('return-error');
+    const returnFormContent = document.getElementById('return-form-content');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnError) returnError.classList.add('d-none');
+    if (returnFormContent) returnFormContent.classList.add('d-none');
+}
+
+function showReturnLoadingState() {
+    const returnLoading = document.getElementById('return-loading');
+    if (returnLoading) returnLoading.classList.remove('d-none');
+}
+
+function showReturnError(message) {
+    const returnLoading = document.getElementById('return-loading');
+    const returnErrorMessage = document.getElementById('return-error-message');
+    const returnError = document.getElementById('return-error');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnErrorMessage) returnErrorMessage.textContent = message;
+    if (returnError) returnError.classList.remove('d-none');
+}
+
+function showReturnFormContent() {
+    const returnLoading = document.getElementById('return-loading');
+    const returnFormContent = document.getElementById('return-form-content');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnFormContent) returnFormContent.classList.remove('d-none');
+}
+
+// Helper function to convert date from DD/MM/YYYY to YYYY-MM-DD
+function convertDateFormat(dateString) {
+    if (!dateString || dateString === 'N/A') {
+        return dateString;
+    }
+    
+    // Check if the date is already in YYYY-MM-DD format
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateString;
+    }
+    
+    // Convert from DD/MM/YYYY to YYYY-MM-DD
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+    }
+    
+    return dateString;
+}
+
+function populateReturnModal(loanData) {
+    const userName = document.getElementById('return-user-name');
+    const bookTitle = document.getElementById('return-book-title');
+    const startDate = document.getElementById('return-start-date');
+    const dueDate = document.getElementById('return-due-date');
+    
+    if (userName) userName.textContent = loanData.user_name;
+    if (bookTitle) bookTitle.textContent = `${loanData.book_title} - ${loanData.book_author}`;
+    if (startDate) startDate.textContent = loanData.start_date;
+    if (dueDate) dueDate.textContent = loanData.due_date;
+}
+
+function confirmReturn() {
+    const conditionDamaged = document.getElementById('condition-damaged');
+    const damageDescriptionField = document.getElementById('damage-description');
+    
+    if (!conditionDamaged || !damageDescriptionField) {
+        showReturnError('Erro: elementos do formulário não encontrados.');
+        return;
+    }
+    
+    const isDamaged = conditionDamaged.checked;
+    const damageDescription = damageDescriptionField.value.trim();
+    
+    // Enhanced validation for damage description
+    if (isDamaged) {
+        const errorDiv = document.getElementById('damage-description-error');
+        
+        if (!damageDescription) {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'A descrição dos danos é obrigatória.';
+            damageDescriptionField.focus();
+            return;
+        }
+        
+        if (damageDescription.length < 10) {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'A descrição deve ter pelo menos 10 caracteres para ser válida.';
+            damageDescriptionField.focus();
+            return;
+        }
+        
+        // Check for meaningful content (not just repeated characters)
+        if (/^(.)\1{9,}$/.test(damageDescription) || damageDescription.toLowerCase() === 'dano' || damageDescription.toLowerCase() === 'danificado') {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'Por favor, forneça uma descrição mais detalhada dos danos específicos.';
+            damageDescriptionField.focus();
+            return;
+        }
+    }
+    
+    // Clear any previous validation errors
+    damageDescriptionField.classList.remove('is-invalid');
+    
+    // Disable button and show loading
+    const confirmBtn = document.getElementById('confirm-return-btn');
+    if (!confirmBtn) {
+        showReturnError('Erro: botão de confirmação não encontrado.');
+        return;
+    }
+    
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processando...';
+    
+    // Prepare request data
+    const requestData = {
+        is_damaged: isDamaged,
+        damage_description: damageDescription
+    };
+    
+    // Submit return
+    fetch(`/accounts/loans/return/${currentLoanId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('returnBookModal'));
+            modal.hide();
+            
+            // Show success message
+            showSuccessMessage(data.message);
+            
+            // Refresh page to update loan list
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showReturnError(data.message);
+        }
+    })
+    .catch(error => {
+        showReturnError('Erro ao processar devolução. Tente novamente.');
+    })
+    .finally(() => {
+        // Re-enable button
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    });
+}
+
+function showSuccessMessage(message) {
+    // Create a temporary success alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up return modal event listeners
+    setupReturnModalListeners();
 });
 </script>
 {% endblock %}
