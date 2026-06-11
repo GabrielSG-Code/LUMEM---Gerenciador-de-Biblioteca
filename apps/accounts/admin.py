@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Emprestimo, Livros, Usuarios, LoanConfig
+from .models import User, Emprestimo, Livros, Usuarios, LoanConfig, DamageReport, UserRegularization
 
 
 @admin.register(User)
@@ -85,5 +85,46 @@ class LoanConfigAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Loan Settings', {
             'fields': ('max_loans_per_reader', 'loan_duration_days', 'max_overdue_days')
+        }),
+    )
+
+
+@admin.register(DamageReport)
+class DamageReportAdmin(admin.ModelAdmin):
+    list_display = ('book', 'user', 'reported_at', 'reported_by', 'has_regularization')
+    list_filter = ('reported_at', 'reported_by')
+    search_fields = ('book__titulo', 'user__username', 'description')
+    readonly_fields = ('reported_at',)
+    ordering = ('-reported_at',)
+    
+    fieldsets = (
+        ('Informações do Dano', {
+            'fields': ('emprestimo', 'user', 'book', 'description')
+        }),
+        ('Informações de Controle', {
+            'fields': ('reported_by', 'reported_at')
+        }),
+    )
+    
+    def has_regularization(self, obj):
+        return hasattr(obj, 'regularization')
+    has_regularization.boolean = True
+    has_regularization.short_description = 'Regularizado'
+
+
+@admin.register(UserRegularization)
+class UserRegularizationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'damage_report', 'method', 'administrator', 'regularized_at')
+    list_filter = ('method', 'regularized_at', 'administrator')
+    search_fields = ('user__username', 'damage_report__book__titulo')
+    readonly_fields = ('regularized_at',)
+    ordering = ('-regularized_at',)
+    
+    fieldsets = (
+        ('Regularização', {
+            'fields': ('damage_report', 'user', 'method', 'notes')
+        }),
+        ('Informações de Controle', {
+            'fields': ('administrator', 'regularized_at')
         }),
     )
