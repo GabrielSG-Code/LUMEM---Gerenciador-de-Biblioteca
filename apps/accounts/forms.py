@@ -347,8 +347,8 @@ class LoanForm(forms.ModelForm):
             'class': 'form-control',
             'type': 'date',
             'readonly': 'readonly'
-        }),
-        initial=timezone.now().date,
+        }, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d'],
         label="Data de Início"
     )
     data_entrega = forms.DateField(
@@ -356,7 +356,8 @@ class LoanForm(forms.ModelForm):
             'class': 'form-control',
             'type': 'date',
             'readonly': 'readonly'
-        }),
+        }, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d'],
         label="Data de Entrega"
     )
     class Meta:
@@ -464,7 +465,11 @@ class LoanForm(forms.ModelForm):
             loan_config = LoanConfig.get_config()
             
             # Check restrictions and provide specific error messages
-            if overdue_loans >= 1:
+            if user.status == User.Status.BLOCKED:
+                raise forms.ValidationError(
+                    'Não é possível realizar o empréstimo: usuário bloqueado por devolução de livro danificado.'
+                )
+            elif overdue_loans >= 1:
                 raise forms.ValidationError(
                     'Não é possível realizar o empréstimo: o leitor possui empréstimos em atraso.'
                 )

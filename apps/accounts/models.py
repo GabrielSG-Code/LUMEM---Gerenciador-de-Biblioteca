@@ -7,9 +7,15 @@ class User(AbstractUser):
         ADMIN = 'admin', 'Administrador'
         LIBRARIAN = 'librarian', 'Bibliotecário'
         READER = 'reader', 'Leitor'
+    
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Ativo'
+        INACTIVE = 'inactive', 'Inativo'
+        BLOCKED = 'blocked', 'Bloqueado'
 
     role = models.CharField(max_length=15, choices=Role.choices, default=Role.READER)
     email = models.EmailField(max_length=320, unique=True)
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.ACTIVE)
 
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
@@ -78,3 +84,66 @@ class Usuarios(models.Model):
     class Meta:
         managed = True
         db_table = 'usuarios'
+
+
+class DamageReport(models.Model):
+    emprestimo = models.ForeignKey(Emprestimo, on_delete=models.CASCADE, related_name='damage_reports')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='damage_reports')
+    book = models.ForeignKey(Livros, on_delete=models.CASCADE, related_name='damage_reports')
+    description = models.TextField(max_length=1000, help_text="Descrição do dano relatado")
+    reported_at = models.DateTimeField(auto_now_add=True)
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reported_damages')
+
+    class Meta:
+        verbose_name = "Relatório de Dano"
+        verbose_name_plural = "Relatórios de Danos"
+        ordering = ['-reported_at']
+
+    def __str__(self):
+        return f"Dano - {self.book.titulo} por {self.user.username}"
+
+
+class UserRegularization(models.Model):
+    class RegularizationMethod(models.TextChoices):
+        FINANCIAL_REIMBURSEMENT = 'financial', 'Reembolso financeiro'
+        BOOK_REPLACEMENT = 'replacement', 'Substituição do livro'
+        OTHER = 'other', 'Outro'
+
+    damage_report = models.OneToOneField(
+        DamageReport, 
+        on_delete=models.CASCADE, 
+        related_name='regularization',
+        help_text="Relatório de dano que está sendo regularizado"
+    )
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='regularizations',
+        help_text="Usuário que estava bloqueado"
+    )
+    administrator = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='performed_regularizations',
+        help_text="Administrador que realizou a regularização"
+    )
+    method = models.CharField(
+        max_length=20, 
+        choices=RegularizationMethod.choices,
+        help_text="Método usado para regularizar a situação"
+    )
+    notes = models.TextField(
+        max_length=500, 
+        blank=True, 
+        null=True,
+        help_text="Observações adicionais sobre a regularização"
+    )
+    regularized_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Regularização de Usuário"
+        verbose_name_plural = "Regularizações de Usuários"
+        ordering = ['-regularized_at']
+
+    def __str__(self):
+        return f"Regularização - {self.user.username} em {self.regularized_at.strftime('%d/%m/%Y')}"

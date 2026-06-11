@@ -134,11 +134,11 @@
                 </td>
                 <td>
                   {% if not loan.return_date %}
-                    <a href="{% url 'return_book' loan.id %}" 
+                    <button 
                        class="btn-return"
-                       onclick="return confirm('Confirmar devolução?')">
+                       onclick="openReturnModal({{ loan.id }})">
                       Devolver
-                    </a>
+                    </button>
                   {% endif %}
                 </td>
               </tr>
@@ -348,6 +348,111 @@
   </div>
 </div>
 
+<!-- Return Book Modal -->
+<div class="modal fade" id="returnBookModal" tabindex="-1" aria-labelledby="returnBookModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="returnBookModalLabel">Devolução de Livro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Loading state -->
+        <div id="return-loading" class="text-center d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="mt-2">Carregando informações do empréstimo...</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="return-error" class="alert alert-danger d-none" role="alert">
+          <strong>Erro:</strong> <span id="return-error-message"></span>
+        </div>
+
+        <!-- Form content -->
+        <div id="return-form-content" class="d-none">
+          <div class="mb-3">
+            <h6>Informações do Empréstimo:</h6>
+            <table class="table table-sm">
+              <tr>
+                <td><strong>Usuário:</strong></td>
+                <td id="return-user-name"></td>
+              </tr>
+              <tr>
+                <td><strong>Livro:</strong></td>
+                <td id="return-book-title"></td>
+              </tr>
+              <tr>
+                <td><strong>Data de Início:</strong></td>
+                <td id="return-start-date"></td>
+              </tr>
+              <tr>
+                <td><strong>Data de Entrega:</strong></td>
+                <td id="return-due-date"></td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="mb-3">
+            <h6>Condição do Livro:</h6>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="book_condition" id="condition-good" value="good" checked>
+              <label class="form-check-label" for="condition-good">
+                <strong>Livro em boas condições</strong>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="book_condition" id="condition-damaged" value="damaged">
+              <label class="form-check-label" for="condition-damaged">
+                <strong>Livro foi devolvido com danos</strong>
+              </label>
+            </div>
+          </div>
+
+          <!-- Damage description field (hidden by default) -->
+          <div id="damage-description-section" class="mb-3 d-none">
+            <label for="damage-description" class="form-label">
+              <strong>Descrição dos Danos:</strong>
+              <span class="text-danger">*</span>
+            </label>
+            <textarea 
+              class="form-control" 
+              id="damage-description" 
+              name="damage_description" 
+              rows="4" 
+              placeholder="Ex: Páginas rasgadas (p. 15-20), capa danificada, riscos a caneta, páginas molhadas..." 
+              maxlength="1000"
+              required>
+            </textarea>
+            <div class="form-text">
+              <small>Seja específico sobre o tipo, localização e extensão dos danos. Esta informação será usada para avaliação e eventual cobrança.</small>
+            </div>
+            <div class="invalid-feedback" id="damage-description-error"></div>
+            <div class="form-text mt-1">
+              <span id="damage-char-count">0</span>/1000 caracteres
+            </div>
+          </div>
+
+          <!-- Warning for damage consequences -->
+          <div id="damage-warning" class="alert alert-warning d-none">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;">
+              <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+            </svg>
+            <strong>Atenção:</strong> Ao registrar danos no livro, o usuário responsável será automaticamente bloqueado e não poderá realizar novos empréstimos.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="confirm-return-btn" class="btn btn-primary d-none" onclick="confirmReturn()">
+          Confirmar Devolução
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -427,17 +532,386 @@ document.addEventListener('DOMContentLoaded', function() {
     const loanDurationDays = Number("{{ loan_config.loan_duration_days|default:7 }}");
 
     if (startDateInput && endDateInput) {
-        const today = new Date();
-        const todayFormatted = today.toISOString().split('T')[0];
-
-        startDateInput.value = todayFormatted;
-
-        const deliveryDate = new Date(today);
-        deliveryDate.setDate(deliveryDate.getDate() + loanDurationDays);
-
-        const deliveryFormatted = deliveryDate.toISOString().split('T')[0];
-        endDateInput.value = deliveryFormatted;
+        try {
+            // Only set dates if they're not already set by Django
+            if (!startDateInput.value) {
+                const today = new Date();
+                const todayFormatted = today.toISOString().split('T')[0];
+                startDateInput.value = todayFormatted;
+            }
+            
+            if (!endDateInput.value) {
+                const today = new Date();
+                const deliveryDate = new Date(today);
+                deliveryDate.setDate(deliveryDate.getDate() + loanDurationDays);
+                const deliveryFormatted = deliveryDate.toISOString().split('T')[0];
+                endDateInput.value = deliveryFormatted;
+            }
+        } catch (error) {
+            console.warn('Error setting initial date values:', error);
+        }
     }
+    
+    // Set up return modal event listeners
+    setupReturnModalListeners();
+});
+
+// Return modal functionality
+let currentLoanId = null;
+
+function setupReturnModalListeners() {
+    // Remove existing listeners to prevent duplicates
+    document.querySelectorAll('input[name="book_condition"]').forEach(function(radio) {
+        radio.removeEventListener('change', handleBookConditionChange);
+    });
+    
+    // Listen for radio button changes
+    document.querySelectorAll('input[name="book_condition"]').forEach(function(radio) {
+        radio.addEventListener('change', handleBookConditionChange);
+    });
+    
+    // Add character count functionality
+    const damageDescription = document.getElementById('damage-description');
+    if (damageDescription) {
+        // Remove existing listeners
+        damageDescription.removeEventListener('input', updateCharacterCount);
+        damageDescription.removeEventListener('input', clearValidationError);
+        
+        // Add new listeners
+        damageDescription.addEventListener('input', updateCharacterCount);
+        damageDescription.addEventListener('input', clearValidationError);
+    }
+}
+
+function handleBookConditionChange() {
+    // Use setTimeout to ensure DOM is fully rendered
+    setTimeout(() => {
+        const damageSection = document.getElementById('damage-description-section');
+        const damageWarning = document.getElementById('damage-warning');
+        const confirmBtn = document.getElementById('confirm-return-btn');
+        const damageDescription = document.getElementById('damage-description');
+    
+    // Check minimum required elements (damage section and confirm button)
+    if (damageSection && confirmBtn) {
+        if (this.value === 'damaged') {
+            damageSection.classList.remove('d-none');
+            damageSection.style.display = 'block'; // Force show with inline style
+            
+            // Show warning if it exists
+            if (damageWarning) {
+                damageWarning.classList.remove('d-none');
+                damageWarning.style.display = 'block'; // Force show with inline style
+            }
+            
+            // Focus on the description field for better UX
+            setTimeout(() => {
+                if (damageDescription) damageDescription.focus();
+            }, 100);
+        } else {
+            damageSection.classList.add('d-none');
+            damageSection.style.display = 'none';
+            
+            // Hide warning if it exists
+            if (damageWarning) {
+                damageWarning.classList.add('d-none');
+                damageWarning.style.display = 'none';
+            }
+            
+            // Clear any previous error states and content
+            if (damageDescription) {
+                damageDescription.classList.remove('is-invalid');
+                damageDescription.value = '';
+                updateCharacterCount();
+            }
+        }
+        confirmBtn.classList.remove('d-none');
+        confirmBtn.style.display = 'inline-block'; // Force show button
+    }
+    }, 50); // Small delay to ensure DOM is ready
+}
+
+function clearValidationError() {
+    // Clear validation error when user starts typing
+    if (this.classList.contains('is-invalid')) {
+        this.classList.remove('is-invalid');
+        const errorDiv = document.getElementById('damage-description-error');
+        if (errorDiv) errorDiv.textContent = '';
+    }
+}
+
+function updateCharacterCount() {
+    const damageDescription = document.getElementById('damage-description');
+    const charCount = document.getElementById('damage-char-count');
+    if (damageDescription && charCount) {
+        const currentLength = damageDescription.value.length;
+        charCount.textContent = currentLength;
+        
+        // Change color based on usage
+        if (currentLength > 900) {
+            charCount.style.color = '#dc3545'; // Red when near limit
+        } else if (currentLength > 700) {
+            charCount.style.color = '#fd7e14'; // Orange when getting close
+        } else {
+            charCount.style.color = '#6c757d'; // Default gray
+        }
+    }
+}
+
+function openReturnModal(loanId) {
+    currentLoanId = loanId;
+    const modal = new bootstrap.Modal(document.getElementById('returnBookModal'));
+    
+    // Reset modal state
+    resetReturnModal();
+    
+    // Show loading state
+    showReturnLoadingState();
+    
+    // Show modal
+    modal.show();
+    
+    // Fetch loan data
+    fetch(`/accounts/loans/return/${loanId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateReturnModal(data.loan_data);
+            showReturnFormContent();
+            // Re-setup listeners after content is loaded
+            setupReturnModalListeners();
+        } else {
+            showReturnError(data.message);
+        }
+    })
+    .catch(error => {
+        showReturnError('Erro ao carregar informações do empréstimo.');
+    });
+}
+
+function resetReturnModal() {
+    // Reset radio buttons
+    const conditionGood = document.getElementById('condition-good');
+    const conditionDamaged = document.getElementById('condition-damaged');
+    if (conditionGood) conditionGood.checked = true;
+    if (conditionDamaged) conditionDamaged.checked = false;
+    
+    // Hide sections with null checks
+    const damageSection = document.getElementById('damage-description-section');
+    const damageWarning = document.getElementById('damage-warning');
+    const confirmBtn = document.getElementById('confirm-return-btn');
+    
+    if (damageSection) damageSection.classList.add('d-none');
+    if (damageWarning) damageWarning.classList.add('d-none');
+    if (confirmBtn) confirmBtn.classList.add('d-none');
+    
+    // Clear description and remove validation states
+    const damageDescription = document.getElementById('damage-description');
+    if (damageDescription) {
+        damageDescription.value = '';
+        damageDescription.classList.remove('is-invalid');
+    }
+    
+    // Reset character count
+    updateCharacterCount();
+    
+    // Clear error messages
+    const errorDiv = document.getElementById('damage-description-error');
+    if (errorDiv) errorDiv.textContent = '';
+    
+    // Reset visibility states
+    const returnLoading = document.getElementById('return-loading');
+    const returnError = document.getElementById('return-error');
+    const returnFormContent = document.getElementById('return-form-content');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnError) returnError.classList.add('d-none');
+    if (returnFormContent) returnFormContent.classList.add('d-none');
+}
+
+function showReturnLoadingState() {
+    const returnLoading = document.getElementById('return-loading');
+    if (returnLoading) returnLoading.classList.remove('d-none');
+}
+
+function showReturnError(message) {
+    const returnLoading = document.getElementById('return-loading');
+    const returnErrorMessage = document.getElementById('return-error-message');
+    const returnError = document.getElementById('return-error');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnErrorMessage) returnErrorMessage.textContent = message;
+    if (returnError) returnError.classList.remove('d-none');
+}
+
+function showReturnFormContent() {
+    const returnLoading = document.getElementById('return-loading');
+    const returnFormContent = document.getElementById('return-form-content');
+    
+    if (returnLoading) returnLoading.classList.add('d-none');
+    if (returnFormContent) returnFormContent.classList.remove('d-none');
+}
+
+// Helper function to convert date from DD/MM/YYYY to YYYY-MM-DD
+function convertDateFormat(dateString) {
+    if (!dateString || dateString === 'N/A') {
+        return dateString;
+    }
+    
+    // Check if the date is already in YYYY-MM-DD format
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateString;
+    }
+    
+    // Convert from DD/MM/YYYY to YYYY-MM-DD
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+    }
+    
+    return dateString;
+}
+
+function populateReturnModal(loanData) {
+    const userName = document.getElementById('return-user-name');
+    const bookTitle = document.getElementById('return-book-title');
+    const startDate = document.getElementById('return-start-date');
+    const dueDate = document.getElementById('return-due-date');
+    
+    if (userName) userName.textContent = loanData.user_name;
+    if (bookTitle) bookTitle.textContent = `${loanData.book_title} - ${loanData.book_author}`;
+    if (startDate) startDate.textContent = loanData.start_date;
+    if (dueDate) dueDate.textContent = loanData.due_date;
+}
+
+function confirmReturn() {
+    const conditionDamaged = document.getElementById('condition-damaged');
+    const damageDescriptionField = document.getElementById('damage-description');
+    
+    if (!conditionDamaged || !damageDescriptionField) {
+        showReturnError('Erro: elementos do formulário não encontrados.');
+        return;
+    }
+    
+    const isDamaged = conditionDamaged.checked;
+    const damageDescription = damageDescriptionField.value.trim();
+    
+    // Enhanced validation for damage description
+    if (isDamaged) {
+        const errorDiv = document.getElementById('damage-description-error');
+        
+        if (!damageDescription) {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'A descrição dos danos é obrigatória.';
+            damageDescriptionField.focus();
+            return;
+        }
+        
+        if (damageDescription.length < 10) {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'A descrição deve ter pelo menos 10 caracteres para ser válida.';
+            damageDescriptionField.focus();
+            return;
+        }
+        
+        // Check for meaningful content (not just repeated characters)
+        if (/^(.)\1{9,}$/.test(damageDescription) || damageDescription.toLowerCase() === 'dano' || damageDescription.toLowerCase() === 'danificado') {
+            damageDescriptionField.classList.add('is-invalid');
+            if (errorDiv) errorDiv.textContent = 'Por favor, forneça uma descrição mais detalhada dos danos específicos.';
+            damageDescriptionField.focus();
+            return;
+        }
+    }
+    
+    // Clear any previous validation errors
+    damageDescriptionField.classList.remove('is-invalid');
+    
+    // Disable button and show loading
+    const confirmBtn = document.getElementById('confirm-return-btn');
+    if (!confirmBtn) {
+        showReturnError('Erro: botão de confirmação não encontrado.');
+        return;
+    }
+    
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processando...';
+    
+    // Prepare request data
+    const requestData = {
+        is_damaged: isDamaged,
+        damage_description: damageDescription
+    };
+    
+    // Submit return
+    fetch(`/accounts/loans/return/${currentLoanId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('returnBookModal'));
+            modal.hide();
+            
+            // Show success message
+            showSuccessMessage(data.message);
+            
+            // Refresh page to update loan list
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showReturnError(data.message);
+        }
+    })
+    .catch(error => {
+        showReturnError('Erro ao processar devolução. Tente novamente.');
+    })
+    .finally(() => {
+        // Re-enable button
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    });
+}
+
+function showSuccessMessage(message) {
+    // Create a temporary success alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up return modal event listeners
+    setupReturnModalListeners();
 });
 </script>
 {% endblock %}

@@ -21,7 +21,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 from .forms import RegisterForm, EmailOrUsernameLoginForm, AddBookForm, LoanForm, ChangePasswordForm, ChangeEmailForm, ChangeUsernameForm, EditBookForm, get_current_year, get_max_book_year, get_max_book_copies, get_default_book_copies
-from .models import Livros, User, Emprestimo, LoanConfig
+from .models import Livros, User, Emprestimo, LoanConfig, DamageReport, UserRegularization
 
 
 def register(request):
@@ -327,23 +327,51 @@ def manage_users(request):
         if user.is_superuser and not request.user.is_superuser:
             can_edit = False
         
+        # Get user status based on the unified status field
+        user_status = user.get_status_display() if hasattr(user, 'status') else 'Ativo'
+        
+        # Debug mode: simulate blocked user for testing
+        # This makes the first reader appear as blocked for testing the filter
+        if request.GET.get('debug_blocked') == '1' and user.role == 'reader' and users.filter(role='reader').first() == user:
+            user_status = 'Bloqueado'
+        
         user_data.append({
             'id': user.id,
             'initials': initials,
             'name': user.get_full_name() or user.username,
             'email': user.email,
             'role': user.get_role_display(),
-            'active': user.is_active,
+            'status': user_status,
             'last_login': user.last_login.strftime('%d/%m/%Y, %H:%M') if user.last_login else 'Nunca',
             'is_superuser': user.is_superuser,
             'can_edit': can_edit
         })
 
+    # Calculate status-based counts safely
+    active_count = 0
+    inactive_count = 0
+    blocked_count = 0
+    
+    try:
+        active_count = users.filter(status=User.Status.ACTIVE).count()
+        inactive_count = users.filter(status=User.Status.INACTIVE).count()
+        blocked_count = users.filter(status=User.Status.BLOCKED).count()
+    except Exception:
+        # Fallback to is_active field if status field doesn't exist yet
+        active_count = users.filter(is_active=True).count()
+        inactive_count = users.filter(is_active=False).count()
+        blocked_count = 0
+    
+    # Debug mode: add 1 to blocked count if simulating blocked user
+    if request.GET.get('debug_blocked') == '1':
+        blocked_count += 1
+        active_count -= 1 if active_count > 0 else 0
+    
     stats = {
         'total': users.count(),
-        'admin': users.filter(role='admin').count(),
-        'librarian': users.filter(role='librarian').count(),
-        'reader': users.filter(role='reader').count()
+        'active': active_count,
+        'inactive': inactive_count,
+        'blocked': blocked_count
     }
 
     return render(request, 'manage_users.html', {
@@ -374,6 +402,10 @@ def update_user(request, user_id):
         
         data = json.loads(request.body)
 
+        # Handle regularization workflow for blocked users
+        if 'regularization_method' in data and user.status == User.Status.BLOCKED:
+            return handle_user_regularization(request, user, data)
+
         if 'role' in data:
             role_map = {
                 'Leitor': 'reader',
@@ -382,8 +414,17 @@ def update_user(request, user_id):
             }
             user.role = role_map.get(data['role'], 'reader')
 
-        if 'active' in data:
-            user.is_active = data['active']
+        if 'status' in data:
+            status_map = {
+                'Ativo': User.Status.ACTIVE,
+                'Inativo': User.Status.INACTIVE,
+                'Bloqueado': User.Status.BLOCKED
+            }
+            new_status = status_map.get(data['status'])
+            if new_status:
+                user.status = new_status
+                # Also update is_active based on status for compatibility
+                user.is_active = (new_status == User.Status.ACTIVE)
 
         user.save()
 
@@ -396,6 +437,125 @@ def update_user(request, user_id):
         return JsonResponse({
             'success': False,
             'message': f'Erro ao atualizar usuário: {str(e)}'
+        }, status=500)
+
+
+def handle_user_regularization(request, user, data):
+    """Handle the regularization workflow for blocked users"""
+    try:
+        # Validate regularization method
+        regularization_method = data.get('regularization_method')
+        if not regularization_method:
+            return JsonResponse({
+                'success': False,
+                'message': 'Método de regularização é obrigatório.'
+            }, status=400)
+        
+        # Get the damage report that caused the block
+        try:
+            damage_report = DamageReport.objects.filter(user=user).latest('reported_at')
+        except DamageReport.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Relatório de dano não encontrado para este usuário.'
+            }, status=404)
+        
+        # Check if already regularized
+        if hasattr(damage_report, 'regularization'):
+            return JsonResponse({
+                'success': False,
+                'message': 'Este usuário já foi regularizado anteriormente.'
+            }, status=400)
+        
+        # Begin transaction to ensure data consistency
+        with transaction.atomic():
+            # Create regularization record
+            regularization = UserRegularization.objects.create(
+                damage_report=damage_report,
+                user=user,
+                administrator=request.user,
+                method=regularization_method,
+                notes=data.get('regularization_notes', '').strip()
+            )
+            
+            # Unblock the user
+            user.status = User.Status.ACTIVE
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Usuário "{user.get_full_name() or user.username}" foi regularizado e desbloqueado com sucesso! O usuário já pode realizar novos empréstimos.',
+                'regularized': True
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao processar regularização: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_user_damage_info(request, user_id):
+    """Get damage information for a blocked user"""
+    if not (request.user.is_superuser or request.user.role == 'admin'):
+        return JsonResponse({
+            'success': False,
+            'message': 'Acesso negado.'
+        }, status=403)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+        
+        # Only get damage info for blocked users
+        if user.status != User.Status.BLOCKED:
+            return JsonResponse({
+                'success': False,
+                'message': 'Este usuário não está bloqueado.'
+            }, status=400)
+        
+        # Get the latest damage report
+        try:
+            damage_report = DamageReport.objects.filter(user=user).latest('reported_at')
+            
+            # Check if already regularized
+            is_regularized = hasattr(damage_report, 'regularization')
+            
+            damage_info = {
+                'book_title': damage_report.book.titulo,
+                'book_author': damage_report.book.autor,
+                'description': damage_report.description,
+                'reported_date': damage_report.reported_at.strftime('%d/%m/%Y'),
+                'reported_by': damage_report.reported_by.username,
+                'is_regularized': is_regularized
+            }
+            
+            if is_regularized:
+                regularization = damage_report.regularization
+                damage_info['regularization_info'] = {
+                    'method': regularization.get_method_display(),
+                    'regularized_at': regularization.regularized_at.strftime('%d/%m/%Y'),
+                    'administrator': regularization.administrator.username,
+                    'notes': regularization.notes
+                }
+            
+            return JsonResponse({
+                'success': True,
+                'damage_info': damage_info
+            })
+            
+        except DamageReport.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Relatório de dano não encontrado.'
+            }, status=404)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao obter informações: {str(e)}'
         }, status=500)
 
 
@@ -707,29 +867,133 @@ def manage_loans(request):
 
 
 @login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def return_book(request, loan_id):
     emprestimo = get_object_or_404(Emprestimo, id=loan_id)
 
     # Check if reader is trying to return someone else's book
     if request.user.role == 'reader' and str(emprestimo.id_usuario) != str(request.user.id):
+        if request.method == 'GET':
+            return JsonResponse({
+                'success': False,
+                'message': 'Você só pode devolver seus próprios livros.'
+            }, status=403)
         messages.error(request, 'Você só pode devolver seus próprios livros.')
         return redirect('manage_loans')
 
     if emprestimo.data_fim:
+        if request.method == 'GET':
+            return JsonResponse({
+                'success': False,
+                'message': 'Este livro já foi devolvido.'
+            }, status=400)
         messages.warning(request, 'Este livro já foi devolvido.')
         return redirect('manage_loans')
 
-    emprestimo.data_fim = timezone.now().date()
-    emprestimo.save()
+    # GET request: Return modal data for display
+    if request.method == 'GET':
+        try:
+            book = Livros.objects.get(id_livro=emprestimo.id_livro)
+            user = User.objects.get(id=emprestimo.id_usuario)
+            
+            return JsonResponse({
+                'success': True,
+                'loan_data': {
+                    'loan_id': emprestimo.id,
+                    'book_title': book.titulo,
+                    'book_author': book.autor,
+                    'user_name': user.username,
+                    'start_date': emprestimo.data_inicio.strftime('%d/%m/%Y') if emprestimo.data_inicio else 'N/A',
+                    'due_date': emprestimo.data_entrega.strftime('%d/%m/%Y') if emprestimo.data_entrega else 'N/A'
+                }
+            })
+        except (Livros.DoesNotExist, User.DoesNotExist):
+            return JsonResponse({
+                'success': False,
+                'message': 'Dados do empréstimo não encontrados.'
+            }, status=404)
 
-    try:
-        book = Livros.objects.get(id_livro=emprestimo.id_livro)
-        book.status_livro = 'Disponível'
-        book.save()
-        messages.success(request, f'Livro "{book.titulo}" devolvido com sucesso!')
-    except Livros.DoesNotExist:
-        messages.success(request, 'Empréstimo finalizado.')
+    # POST request: Process return with optional damage report
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            is_damaged = data.get('is_damaged', False)
+            damage_description = data.get('damage_description', '').strip()
+
+            # Validate damage description if book is damaged
+            if is_damaged and not damage_description:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'A descrição do dano é obrigatória quando o livro é marcado como danificado.'
+                }, status=400)
+
+            # Begin transaction to ensure data consistency
+            with transaction.atomic():
+                # Complete the return
+                emprestimo.data_fim = timezone.now().date()
+                emprestimo.save()
+
+                # Update book status
+                try:
+                    book = Livros.objects.get(id_livro=emprestimo.id_livro)
+                    book.status_livro = 'Disponível'
+                    book.save()
+                except Livros.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Livro não encontrado no sistema.'
+                    }, status=404)
+
+                # If book is damaged, create damage report and block user
+                if is_damaged:
+                    try:
+                        user = User.objects.get(id=emprestimo.id_usuario)
+                        
+                        # Create damage report
+                        damage_report = DamageReport.objects.create(
+                            emprestimo=emprestimo,
+                            user=user,
+                            book=book,
+                            description=damage_description,
+                            reported_by=request.user
+                        )
+                        
+                        # Block the user
+                        user.status = User.Status.BLOCKED
+                        user.save()
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Livro "{book.titulo}" devolvido com registro de dano. Usuário "{user.username}" foi automaticamente bloqueado.',
+                            'user_blocked': True
+                        })
+                        
+                    except User.DoesNotExist:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Usuário não encontrado no sistema.'
+                        }, status=404)
+                else:
+                    # Normal return without damage
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Livro "{book.titulo}" devolvido com sucesso!',
+                        'user_blocked': False
+                    })
+
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Dados inválidos enviados na requisição.'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Erro interno do servidor: {str(e)}'
+            }, status=500)
     
+    # Fallback redirect for non-AJAX requests
     return redirect('manage_loans')
 
 
@@ -1001,7 +1265,10 @@ def autocomplete_users(request):
         status_text = ""
         is_eligible = True
         
-        if overdue_loans >= 2:
+        if user.status == User.Status.BLOCKED:
+            status_text = " - Bloqueado por dano ❌"
+            is_eligible = False
+        elif overdue_loans >= 2:
             status_text = f" - {overdue_loans} empréstimos atrasados ❌"
             is_eligible = False
         elif overdue_loans >= 1:
