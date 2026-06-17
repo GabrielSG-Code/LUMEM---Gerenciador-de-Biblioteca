@@ -75,23 +75,23 @@
   </div>
 
   <!-- Search and Filters -->
-  <div class="search-and-filters">
+  <form method="get" id="loansFilterForm" class="search-and-filters">
     <div class="search-container">
-      <input type="text" id="loansSearchInput" placeholder="Buscar por usuário..." class="search-input" maxlength="100">
+      <input type="text" id="loansSearchInput" name="search" placeholder="Buscar por usuário..." class="search-input" maxlength="100" value="{{ search_query }}">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </svg>
     </div>
-    
+    <input type="hidden" name="status" id="statusInput" value="{{ status_filter }}">
     <!-- Filter Buttons -->
     <div class="filter-btns">
-      <button class="fbtn active-todos" data-filter="todos" onclick="setFilter(this,'todos')">Todos</button>
-      <button class="fbtn" data-filter="ativo" onclick="setFilter(this,'ativo')">Ativo</button>
-      <button class="fbtn" data-filter="atrasado" onclick="setFilter(this,'atrasado')">Atrasado</button>
-      <button class="fbtn" data-filter="devolvido" onclick="setFilter(this,'devolvido')">Devolvido</button>
+      <button type="button" class="fbtn {% if status_filter == 'todos' or not status_filter %}active-todos{% endif %}" data-filter="todos" onclick="setFilter(this,'todos')">Todos</button>
+      <button type="button" class="fbtn {% if status_filter == 'ativo' %}active-todos{% endif %}" data-filter="ativo" onclick="setFilter(this,'ativo')">Ativo</button>
+      <button type="button" class="fbtn {% if status_filter == 'atrasado' %}active-todos{% endif %}" data-filter="atrasado" onclick="setFilter(this,'atrasado')">Atrasado</button>
+      <button type="button" class="fbtn {% if status_filter == 'devolvido' %}active-todos{% endif %}" data-filter="devolvido" onclick="setFilter(this,'devolvido')">Devolvido</button>
     </div>
-  </div>
+  </form>
 
   <!-- Loans Table -->
   <div class="loans-container">
@@ -102,8 +102,8 @@
             <tr>
               <th>Usuário</th>
               <th>Livro</th>
-              <th>Data Início</th>
-              <th>Data Entrega</th>
+              <th>Data de empréstimo</th>
+              <th>Data prevista</th>
               <th>Data Devolução</th>
               <th>Status</th>
               <th>Ações</th>
@@ -158,21 +158,21 @@
     {% if loans_page.has_other_pages %}
     <div class="pagination">
       {% if loans_page.has_previous %}
-        <a href="?page={{ loans_page.previous_page_number }}" class="page-btn">‹</a>
+        <a href="?page={{ loans_page.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'todos' %}&status={{ status_filter }}{% endif %}" class="page-btn">‹</a>
       {% endif %}
       
       {% for page_num in loans_page.paginator.page_range %}
         {% if page_num == loans_page.number %}
           <button class="page-btn active">{{ page_num }}</button>
         {% elif page_num == 1 or page_num == loans_page.paginator.num_pages or page_num >= loans_page.number|add:'-1' and page_num <= loans_page.number|add:'1' %}
-          <a href="?page={{ page_num }}" class="page-btn">{{ page_num }}</a>
+          <a href="?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'todos' %}&status={{ status_filter }}{% endif %}" class="page-btn">{{ page_num }}</a>
         {% elif page_num == loans_page.number|add:'-2' or page_num == loans_page.number|add:'2' %}
           <span class="page-ellipsis">...</span>
         {% endif %}
       {% endfor %}
       
       {% if loans_page.has_next %}
-        <a href="?page={{ loans_page.next_page_number }}" class="page-btn">›</a>
+        <a href="?page={{ loans_page.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'todos' %}&status={{ status_filter }}{% endif %}" class="page-btn">›</a>
       {% endif %}
     </div>
     {% endif %}
@@ -445,7 +445,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" id="confirm-return-btn" class="btn btn-primary d-none" onclick="confirmReturn()">
+        <button type="button" id="confirm-return-btn" class="btn btn-primary" onclick="confirmReturn()">
           Confirmar Devolução
         </button>
       </div>
@@ -707,7 +707,7 @@ function resetReturnModal() {
     
     if (damageSection) damageSection.classList.add('d-none');
     if (damageWarning) damageWarning.classList.add('d-none');
-    if (confirmBtn) confirmBtn.classList.add('d-none');
+    if (confirmBtn) confirmBtn.classList.remove('d-none');
     
     // Clear description and remove validation states
     const damageDescription = document.getElementById('damage-description');
