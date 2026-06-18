@@ -13,6 +13,57 @@
   --card-shadow: 0 8px 32px rgba(99,150,255,0.13);
 }
 
+/* ── MESSAGES STYLING ── */
+.messages-container {
+  position: relative;
+  z-index: 1040;
+  padding-top: 20px;
+  margin-bottom: 24px;
+}
+
+.messages-container .alert {
+  position: relative;
+  z-index: 1040;
+  margin-bottom: 16px;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.messages-container .alert-success {
+  background: linear-gradient(135deg, #3dbe78, #2fa562);
+  color: white;
+  border-left: 4px solid #2fa562;
+}
+
+.messages-container .alert-error,
+.messages-container .alert-danger {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  color: white;
+  border-left: 4px solid #c53030;
+}
+
+.messages-container .alert-warning {
+  background: linear-gradient(135deg, #d69e2e, #b7791f);
+  color: white;
+  border-left: 4px solid #b7791f;
+}
+
+.messages-container .alert-info {
+  background: linear-gradient(135deg, #6396ff, #4d7de8);
+  color: white;
+  border-left: 4px solid #4d7de8;
+}
+
+.messages-container .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
 .lumen-dashboard {
   background: var(--bg);
   min-height: 100vh;

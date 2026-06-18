@@ -632,9 +632,10 @@ def edit_book(request, book_id):
                             available_books = updated_books.filter(status_livro='Disponível')
                             
                             if available_books.count() < copies_to_remove:
+                                borrowed_count = current_copies - available_books.count()
                                 return JsonResponse({
                                     'success': False, 
-                                    'error': f'Não é possível remover {copies_to_remove} exemplares. Apenas {available_books.count()} estão disponíveis.'
+                                    'error': f'A quantidade não pode ser menor que o número de exemplares atualmente emprestados (Exemplares em empréstimo: {borrowed_count}).'
                                 })
                             
                             # Remove the excess available copies
@@ -803,7 +804,22 @@ def manage_loans(request):
     else:
         # Librarians and admins see all loans
         emprestimos_queryset = Emprestimo.objects.all().order_by('-data_inicio')
-    
+
+    # Server-side search and status filter
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'todos')
+
+    if search_query:
+        matching_user_ids = [
+            str(u.id) for u in User.objects.filter(username__icontains=search_query)
+        ]
+        emprestimos_queryset = emprestimos_queryset.filter(id_usuario__in=matching_user_ids)
+
+    if status_filter == 'devolvido':
+        emprestimos_queryset = emprestimos_queryset.exclude(data_fim__isnull=True)
+    elif status_filter in ('ativo', 'atrasado'):
+        emprestimos_queryset = emprestimos_queryset.filter(data_fim__isnull=True)
+
     # Add pagination
     paginator = Paginator(emprestimos_queryset, 10)  # 10 loans per page
     page_number = request.GET.get('page')
@@ -862,7 +878,9 @@ def manage_loans(request):
         'loan_form': loan_form,
         'is_reader': request.user.role == 'reader',
         'selected_book_id': selected_book_id,
-        'loan_config': loan_config
+        'loan_config': loan_config,
+        'search_query': search_query,
+        'status_filter': status_filter,
     })
 
 

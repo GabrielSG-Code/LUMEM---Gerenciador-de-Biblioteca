@@ -9,6 +9,57 @@
   --success: #27ae60;
 }
 
+/* ── MESSAGES STYLING ── */
+.messages-container {
+  position: relative;
+  z-index: 1040;
+  padding-top: 20px;
+  margin-bottom: 24px;
+}
+
+.messages-container .alert {
+  position: relative;
+  z-index: 1040;
+  margin-bottom: 16px;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.messages-container .alert-success {
+  background: linear-gradient(135deg, #27ae60, #2d9e4e);
+  color: white;
+  border-left: 4px solid #2d9e4e;
+}
+
+.messages-container .alert-error,
+.messages-container .alert-danger {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  color: white;
+  border-left: 4px solid #a93226;
+}
+
+.messages-container .alert-warning {
+  background: linear-gradient(135deg, #d68910, #b7791f);
+  color: white;
+  border-left: 4px solid #b7791f;
+}
+
+.messages-container .alert-info {
+  background: linear-gradient(135deg, #3498db, #2e86c1);
+  color: white;
+  border-left: 4px solid #2e86c1;
+}
+
+.messages-container .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
 .lumen-browse {
   background: var(--bg);
   min-height: 100vh;
